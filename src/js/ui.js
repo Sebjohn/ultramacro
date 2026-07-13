@@ -94,17 +94,24 @@
     function priorityOptions() {
         return U.PRIORITY_ORDER.map(function (k) { return { value: k, label: U.PRIORITIES[k].label }; });
     }
-    // Liste déroulante des responsables : « non assigné » + connus + « nouveau… »
-    function fillResponsables(current) {
+    // Liste déroulante des responsables (générique, réutilisée par chantier & pôle) :
+    // « non assigné » + connus + « nouveau… ». `sel` = l'élément <select>.
+    function fillRespSelect(sel, current) {
         var names = U.store.responsables();
-        if (current && names.indexOf(current) === -1) names.push(current);
+        if (current && names.indexOf(current) === -1) { names.push(current); names.sort(function (a, b) { return a.localeCompare(b, "fr"); }); }
         var opts = ['<option value="">— Non assigné —</option>'];
         names.forEach(function (n) {
             opts.push('<option value="' + U.escape(n) + '"' + (n === current ? " selected" : "") + ">" + U.escape(n) + "</option>");
         });
         opts.push('<option value="__new__">➕ Nouveau responsable…</option>');
-        $("fRespSelect").innerHTML = opts.join("");
-        var nf = $("fRespNew"); nf.hidden = true; nf.value = "";
+        sel.innerHTML = opts.join("");
+        var nf = sel.parentElement.querySelector(".resp-new");
+        if (nf) { nf.hidden = true; nf.value = ""; }
+    }
+    // Valeur retenue : soit l'option choisie, soit le nom saisi via « nouveau… ».
+    function readRespSelect(sel) {
+        var nf = sel.parentElement.querySelector(".resp-new");
+        return sel.value === "__new__" ? (nf ? nf.value : "") : sel.value;
     }
 
     /* ===================== MODAL CHANTIER ===================== */
@@ -115,12 +122,17 @@
             ? '<i class="fa-solid fa-pen"></i> Modifier le chantier'
             : '<i class="fa-solid fa-plus-circle"></i> Nouveau chantier';
 
-        fillSelect($("fPole"), poleOptions(), editing ? editing.pole : (U.viewState.pole || (poleOptions()[0] || {}).value));
+        var selectedPole = editing ? editing.pole : (U.viewState.pole || (poleOptions()[0] || {}).value);
+        fillSelect($("fPole"), poleOptions(), selectedPole);
         fillSelect($("fStatut"), statusOptions(), editing ? editing.statut : "prevu");
         fillSelect($("fPriorite"), priorityOptions(), editing ? editing.priorite : U.DEFAULT_PRIORITY);
 
         $("fNom").value = editing ? editing.nom : "";
-        fillResponsables(editing && editing.responsable ? editing.responsable : "");
+        // Nouveau chantier : pré-remplit avec l'assigné par défaut du pôle sélectionné.
+        var respCurrent;
+        if (editing) { respCurrent = editing.responsable || ""; }
+        else { var pdef = U.store.pole(selectedPole); respCurrent = (pdef && pdef.defaultResponsable) ? pdef.defaultResponsable : ""; }
+        fillRespSelect($("fRespSelect"), respCurrent);
         $("fDeadline").value = editing && editing.deadline ? editing.deadline : "";
         $("fNotes").value = editing && editing.notes ? editing.notes : "";
         var prog = editing ? editing.progression : 0;
@@ -137,8 +149,7 @@
     function submitChantier(e) {
         e.preventDefault();
         var id = $("chantierForm").dataset.editing || null;
-        var respSel = $("fRespSelect").value;
-        var responsable = respSel === "__new__" ? $("fRespNew").value : respSel;
+        var responsable = readRespSelect($("fRespSelect"));
         var res = U.store.saveChantier({
             id: id,
             nom: $("fNom").value,
@@ -199,6 +210,7 @@
             ? '<i class="fa-solid fa-sliders"></i> Configurer le pôle'
             : '<i class="fa-solid fa-folder-plus"></i> Nouveau pôle';
         $("fPoleName").value = editing ? editing.name : "";
+        fillRespSelect($("fPoleRespSelect"), editing && editing.defaultResponsable ? editing.defaultResponsable : "");
         poleFormTheme = editing ? editing.theme : "indigo";
         poleFormIcon = editing ? editing.icon : "folder";
         $("fPoleIcon").value = poleFormIcon;
@@ -216,7 +228,8 @@
             id: id,
             name: $("fPoleName").value,
             icon: $("fPoleIcon").value || poleFormIcon,
-            theme: poleFormTheme
+            theme: poleFormTheme,
+            defaultResponsable: readRespSelect($("fPoleRespSelect"))
         });
         if (!res) { ui.toast("Le nom du pôle est requis", "error"); return; }
         ui.closeModal("poleModal");
@@ -313,11 +326,20 @@
             var id = $("poleForm").dataset.editing; if (id) ui.deletePoleFlow(id);
         });
         $("fProgress").addEventListener("input", function () { $("fProgressVal").textContent = this.value; });
-        $("fRespSelect").addEventListener("change", function () {
-            var isNew = this.value === "__new__";
-            var nf = $("fRespNew");
-            nf.hidden = !isNew;
-            if (isNew) setTimeout(function () { nf.focus(); }, 0);
+        // Affiche le champ de saisie quand on choisit « Nouveau responsable… » (les deux listes).
+        ["fRespSelect", "fPoleRespSelect"].forEach(function (selId) {
+            var sel = $(selId);
+            sel.addEventListener("change", function () {
+                var nf = sel.parentElement.querySelector(".resp-new");
+                var isNew = sel.value === "__new__";
+                if (nf) { nf.hidden = !isNew; if (isNew) setTimeout(function () { nf.focus(); }, 0); }
+            });
+        });
+        // Changer de pôle (nouveau chantier) applique l'assigné par défaut de ce pôle.
+        $("fPole").addEventListener("change", function () {
+            if ($("chantierForm").dataset.editing) return;
+            var p = U.store.pole(this.value);
+            fillRespSelect($("fRespSelect"), (p && p.defaultResponsable) ? p.defaultResponsable : "");
         });
         $("fPoleIcon").addEventListener("input", function () { poleFormIcon = this.value.replace(/^fa-/, ""); updateIconPreview(); });
 

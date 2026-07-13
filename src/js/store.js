@@ -60,10 +60,11 @@
         return store.chantiersOfPole(poleId).filter(function (c) { return c.statut !== "termine"; }).length;
     };
 
-    // Liste unique des responsables (alimente la liste déroulante du formulaire).
+    // Liste unique des responsables (chantiers + assignés par défaut des pôles).
     store.responsables = function () {
         var set = {};
         store.chantiersArray().forEach(function (c) { if (c.responsable) set[c.responsable] = true; });
+        store.polesArray().forEach(function (p) { if (p.defaultResponsable) set[p.defaultResponsable] = true; });
         return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, "fr"); });
     };
 
@@ -142,13 +143,19 @@
 
     store.saveChantier = function (input) {
         var existing = input.id ? store.chantier(input.id) : null;
+        var responsable = (input.responsable || "").trim() || null;
+        // Nouveau chantier sans responsable → hérite de l'assigné par défaut du pôle.
+        if (!responsable && !existing) {
+            var pl = store.pole(input.pole);
+            if (pl && pl.defaultResponsable) responsable = pl.defaultResponsable;
+        }
         var chantier = {
             id: input.id || U.uid(),
             nom: (input.nom || "").trim(),
             pole: input.pole,
             statut: U.STATUSES[input.statut] ? input.statut : "prevu",
             priorite: U.PRIORITIES[input.priorite] ? input.priorite : U.DEFAULT_PRIORITY,
-            responsable: (input.responsable || "").trim() || null,
+            responsable: responsable,
             deadline: input.deadline || null,
             progression: U.clamp(Number(input.progression) || 0, 0, 100),
             notes: (input.notes || "").trim() || null,
@@ -178,6 +185,7 @@
             name: (input.name || "").trim(),
             icon: (input.icon || "folder").trim().replace(/^fa-/, ""),
             theme: U.THEMES[input.theme] ? input.theme : "indigo",
+            defaultResponsable: (input.defaultResponsable || "").trim() || null,
             order: existing ? existing.order : (store.polesArray().length)
         };
         if (!pole.name) return null;

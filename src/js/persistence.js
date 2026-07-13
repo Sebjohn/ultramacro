@@ -29,12 +29,12 @@
         var t = new Date();
         function rel(days) { var d = new Date(t); d.setDate(d.getDate() + days); return U.toInputDate(d); }
         var poles = {
-            direction:  { id: "direction",  name: "Direction & Stratégie", icon: "chess-knight", theme: "indigo",  order: 0 },
-            rd:         { id: "rd",          name: "R&D & Tech",            icon: "code",         theme: "blue",    order: 1 },
-            marketing:  { id: "marketing",   name: "Marketing & Growth",    icon: "bullseye",     theme: "pink",    order: 2 },
-            sales:      { id: "sales",       name: "Commercial & Ventes",   icon: "chart-pie",    theme: "emerald", order: 3 },
-            operations: { id: "operations",  name: "Opérations & Supply",   icon: "cube",         theme: "amber",   order: 4 },
-            rh:         { id: "rh",          name: "Ressources Humaines",   icon: "users",        theme: "cyan",    order: 5 }
+            direction:  { id: "direction",  name: "Direction & Stratégie", icon: "chess-knight", theme: "indigo",  order: 0, defaultResponsable: "Sébastien" },
+            rd:         { id: "rd",          name: "R&D & Tech",            icon: "code",         theme: "blue",    order: 1, defaultResponsable: "Luc M." },
+            marketing:  { id: "marketing",   name: "Marketing & Growth",    icon: "bullseye",     theme: "pink",    order: 2, defaultResponsable: "Julie R." },
+            sales:      { id: "sales",       name: "Commercial & Ventes",   icon: "chart-pie",    theme: "emerald", order: 3, defaultResponsable: "Marc" },
+            operations: { id: "operations",  name: "Opérations & Supply",   icon: "cube",         theme: "amber",   order: 4, defaultResponsable: "Nadia" },
+            rh:         { id: "rh",          name: "Ressources Humaines",   icon: "users",        theme: "cyan",    order: 5, defaultResponsable: "People" }
         };
         var raw = [
             { nom: "Alignement Vision 2030",      pole: "direction",  statut: "encours", priorite: "haute",   responsable: "Sébastien",  deadline: rel(9),   progression: 40 },
@@ -88,6 +88,7 @@
                 name: p.name || k,
                 icon: (p.icon || "folder").toString().replace(/^fa-/, ""),
                 theme: U.THEMES[p.theme] ? p.theme : "indigo",
+                defaultResponsable: p.defaultResponsable || null,
                 order: (typeof p.order === "number") ? p.order : i
             };
         });
