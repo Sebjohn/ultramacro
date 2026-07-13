@@ -232,11 +232,12 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
     color: var(--pole, var(--muted));
     background: color-mix(in srgb, var(--pole, #888) 16%, transparent);
 }
-.pole-meta { flex: 1; min-width: 0; }
+.pole-meta { flex: 1; min-width: 0; padding-right: 34px; }
 .pole-name { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
 .pole-sub { font-size: 12px; color: var(--faint); margin-top: 3px; }
-.pole-gear { position: absolute; top: 14px; right: 14px; opacity: 0; transition: opacity .15s; width: 30px; height: 30px; font-size: 12px; }
-.pole-card:hover .pole-gear { opacity: 1; }
+/* Engrenage toujours visible et cliquable (plus fiable qu'au survol seul) */
+.pole-gear { position: absolute; top: 13px; right: 13px; z-index: 3; width: 34px; height: 34px; font-size: 13px; background: transparent; border-color: transparent; color: var(--faint); }
+.pole-gear:hover, .pole-gear:focus-visible { background: var(--surface-2); border-color: var(--border); color: var(--text); }
 
 .pole-focus-label { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); margin-bottom: 9px; display: flex; align-items: center; gap: 7px; }
 .pole-focus { display: flex; flex-direction: column; gap: 6px; min-height: 112px; }
