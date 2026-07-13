@@ -244,9 +244,9 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 .focus-row {
     display: flex; align-items: center; gap: 10px; cursor: pointer;
     background: var(--bg-soft); border: 1px solid var(--border); border-radius: var(--radius-xs);
-    padding: 9px 11px; transition: border-color .14s, background .14s;
+    padding: 9px 11px; transition: border-color .14s, background .14s, transform .14s var(--ease);
 }
-.focus-row:hover { border-color: var(--border-2); background: var(--surface-2); }
+.focus-row:hover { border-color: var(--border-2); background: var(--surface-2); transform: translateX(3px); }
 .prio-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .focus-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .focus-when { font-size: 11px; font-weight: 700; color: var(--faint); flex-shrink: 0; }
@@ -300,9 +300,9 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
     border-radius: var(--radius-xs); padding: 13px; cursor: grab;
     transition: border-color .14s, transform .12s, box-shadow .14s; animation: fade .22s var(--ease);
 }
-.chantier-card:hover { border-color: var(--border-2); box-shadow: var(--shadow); }
+.chantier-card:hover { border-color: var(--border-2); box-shadow: var(--shadow); transform: translateY(-2px); }
 .chantier-card:active { cursor: grabbing; }
-.chantier-card.dragging { opacity: .4; }
+.chantier-card.dragging { opacity: .5; transform: rotate(1.5deg) scale(1.02); }
 .cc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .cc-name { font-size: 14px; font-weight: 600; line-height: 1.35; }
 .cc-prio { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; padding: 3px 8px; border-radius: 999px; flex-shrink: 0; color: var(--prio); background: color-mix(in srgb, var(--prio) 16%, transparent); }
@@ -314,7 +314,9 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 .cc-progress > div { height: 100%; background: var(--pole, var(--brand)); border-radius: 999px; }
 .cc-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 8px; }
 .cc-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.avatar { width: 23px; height: 23px; border-radius: 50%; display: grid; place-items: center; font-size: 9px; font-weight: 800; color: #fff; background: var(--brand); flex-shrink: 0; }
+.cc-resp { display: flex; align-items: center; gap: 7px; margin-top: 11px; font-size: 12.5px; color: var(--muted); min-width: 0; }
+.cc-resp i { font-size: 11px; color: var(--faint); flex-shrink: 0; }
+.cc-resp span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .badge-date { font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 8px; border: 1px solid var(--border); color: var(--muted); background: var(--bg-soft); }
 .badge-date.late { color: var(--p-haute); border-color: color-mix(in srgb, var(--p-haute) 32%, transparent); }
 .badge-date.soon { color: var(--encours); border-color: color-mix(in srgb, var(--encours) 32%, transparent); }
@@ -442,6 +444,28 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
 .toast.info    { border-left-color: var(--brand-2); }  .toast.info i { color: var(--brand-2); }
 @keyframes toastIn { from { opacity: 0; transform: translateX(44px); } }
 @keyframes toastOut { to { opacity: 0; transform: translateX(44px); } }
+
+/* ===================== UN PEU DE VIE (micro-interactions) ===================== */
+/* L'engrenage pivote au survol */
+.pole-gear i, [data-action="open-settings"] i { transition: transform .35s var(--ease); }
+.pole-gear:hover i, [data-action="open-settings"]:hover i { transform: rotate(90deg); }
+/* L'icône du pôle réagit quand on survole sa carte */
+.pole-ico { transition: transform .25s var(--ease); }
+.pole-card:hover .pole-ico { transform: scale(1.08) rotate(-4deg); }
+/* La pastille de marque respire légèrement au survol */
+.brand-mark { transition: transform .25s var(--ease); }
+.brand:hover .brand-mark { transform: rotate(-8deg) scale(1.05); }
+/* Le bouton principal se soulève */
+.btn-primary { transition: background .15s, transform .1s var(--ease), box-shadow .15s; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 18px -10px var(--brand); }
+/* Les icônes « en cours » tournent doucement (sens : ça bouge) */
+.kcol.encours .kcol-title .fa-spinner,
+.kpi-label .fa-spinner { animation: uspin 4.5s linear infinite; }
+@keyframes uspin { to { transform: rotate(360deg); } }
+/* Respecte la préférence de réduction des animations */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+}
 
 /* ===================== RESPONSIVE ===================== */
 @media (max-width: 1024px) {

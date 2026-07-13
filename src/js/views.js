@@ -26,9 +26,10 @@
         var cls = c.statut === "termine" ? "done" : U.urgencyClass(c);
         return '<span class="badge-date ' + cls + '"><i class="fa-regular fa-clock"></i> ' + U.escape(U.relativeLabel(c.deadline)) + "</span>";
     }
-    function avatar(name) {
+    // Bloc responsable : nom complet (avec icône), tronqué proprement si très long.
+    function respLine(name) {
         if (!name) return "";
-        return '<span class="avatar" title="' + U.escape(name) + '">' + U.escape(U.initials(name)) + "</span>";
+        return '<div class="cc-resp" title="' + U.escape(name) + '"><i class="fa-regular fa-user"></i><span>' + U.escape(name) + "</span></div>";
     }
 
     /* ============================================================
@@ -40,19 +41,43 @@
         renderPolesGrid();
     };
 
+    var KPI_ITEMS = [
+        { key: "total",   label: "Total chantiers", color: "var(--faint)",   icon: "fa-solid fa-layer-group",  neutral: true },
+        { key: "prevu",   label: "À venir",         color: "var(--prevu)",   icon: "fa-regular fa-calendar" },
+        { key: "encours", label: "En cours",        color: "var(--encours)", icon: "fa-solid fa-spinner" },
+        { key: "termine", label: "Terminés",        color: "var(--termine)", icon: "fa-solid fa-check-double" }
+    ];
+    var kpiBuilt = false;
+
     function renderKPIs() {
         var k = U.store.kpis();
-        var items = [
-            { label: "Total chantiers", value: k.total, color: "var(--faint)", icon: "fa-layer-group", neutral: true },
-            { label: "À venir", value: k.prevu, color: "var(--prevu)", icon: "fa-regular fa-calendar" },
-            { label: "En cours", value: k.encours, color: "var(--encours)", icon: "fa-solid fa-spinner" },
-            { label: "Terminés", value: k.termine, color: "var(--termine)", icon: "fa-solid fa-check-double" }
-        ];
-        $("kpiRow").innerHTML = items.map(function (i) {
-            return '<div class="kpi" style="--kpi-c:' + i.color + '">' +
-                '<div class="kpi-label"><i class="fa-solid ' + i.icon + '"></i>' + i.label + "</div>" +
-                '<div class="kpi-value' + (i.neutral ? " neutral" : "") + '">' + i.value + "</div></div>";
-        }).join("");
+        if (!kpiBuilt) {
+            $("kpiRow").innerHTML = KPI_ITEMS.map(function (i) {
+                return '<div class="kpi" style="--kpi-c:' + i.color + '">' +
+                    '<div class="kpi-label"><i class="' + i.icon + '"></i>' + i.label + "</div>" +
+                    '<div class="kpi-value' + (i.neutral ? " neutral" : "") + '" id="kpi-' + i.key + '" data-v="0">0</div></div>';
+            }).join("");
+            kpiBuilt = true;
+        }
+        KPI_ITEMS.forEach(function (i) { animateCount($("kpi-" + i.key), k[i.key]); });
+    }
+
+    // Compteur animé (de l'ancienne valeur vers la nouvelle) — un peu de vie sur les KPIs.
+    function animateCount(el, to) {
+        if (!el) return;
+        var from = Number(el.getAttribute("data-v")) || 0;
+        to = Number(to) || 0;
+        el.setAttribute("data-v", to);
+        if (from === to) { el.textContent = to; return; }
+        var start = null, dur = 520;
+        function step(ts) {
+            if (start === null) start = ts;
+            var p = Math.min((ts - start) / dur, 1);
+            var eased = 1 - Math.pow(1 - p, 3);
+            el.textContent = Math.round(from + (to - from) * eased);
+            if (p < 1) requestAnimationFrame(step); else el.textContent = to;
+        }
+        requestAnimationFrame(step);
     }
 
     function renderDeadlineStrip() {
@@ -182,8 +207,8 @@
         return '<div class="chantier-card" draggable="true" data-cid="' + c.id + '" style="--prio:' + prio.color + '; --pole:' + poleColor + '">' +
             '<div class="cc-top"><div class="cc-name">' + U.escape(c.nom) + "</div>" +
                 '<span class="cc-prio" title="Priorité ' + prio.label + '">' + prio.label + "</span></div>" +
-            poleTag + notes + progressHTML +
-            '<div class="cc-foot"><div class="cc-left">' + avatar(c.responsable) + dateBadge(c) + "</div>" +
+            poleTag + notes + progressHTML + respLine(c.responsable) +
+            '<div class="cc-foot"><div class="cc-left">' + dateBadge(c) + "</div>" +
                 '<div class="cc-actions">' +
                     '<button class="cc-act" data-act="edit-chantier" data-cid="' + c.id + '" title="Modifier"><i class="fa-solid fa-pen"></i></button>' +
                     '<button class="cc-act del" data-act="delete-chantier" data-cid="' + c.id + '" title="Supprimer"><i class="fa-solid fa-trash"></i></button>' +
