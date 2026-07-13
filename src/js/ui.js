@@ -94,6 +94,18 @@
     function priorityOptions() {
         return U.PRIORITY_ORDER.map(function (k) { return { value: k, label: U.PRIORITIES[k].label }; });
     }
+    // Liste déroulante des responsables : « non assigné » + connus + « nouveau… »
+    function fillResponsables(current) {
+        var names = U.store.responsables();
+        if (current && names.indexOf(current) === -1) names.push(current);
+        var opts = ['<option value="">— Non assigné —</option>'];
+        names.forEach(function (n) {
+            opts.push('<option value="' + U.escape(n) + '"' + (n === current ? " selected" : "") + ">" + U.escape(n) + "</option>");
+        });
+        opts.push('<option value="__new__">➕ Nouveau responsable…</option>');
+        $("fRespSelect").innerHTML = opts.join("");
+        var nf = $("fRespNew"); nf.hidden = true; nf.value = "";
+    }
 
     /* ===================== MODAL CHANTIER ===================== */
     ui.openChantier = function (id) {
@@ -108,7 +120,7 @@
         fillSelect($("fPriorite"), priorityOptions(), editing ? editing.priorite : U.DEFAULT_PRIORITY);
 
         $("fNom").value = editing ? editing.nom : "";
-        $("fResp").value = editing && editing.responsable ? editing.responsable : "";
+        fillResponsables(editing && editing.responsable ? editing.responsable : "");
         $("fDeadline").value = editing && editing.deadline ? editing.deadline : "";
         $("fNotes").value = editing && editing.notes ? editing.notes : "";
         var prog = editing ? editing.progression : 0;
@@ -125,13 +137,15 @@
     function submitChantier(e) {
         e.preventDefault();
         var id = $("chantierForm").dataset.editing || null;
+        var respSel = $("fRespSelect").value;
+        var responsable = respSel === "__new__" ? $("fRespNew").value : respSel;
         var res = U.store.saveChantier({
             id: id,
             nom: $("fNom").value,
             pole: $("fPole").value,
             statut: $("fStatut").value,
             priorite: $("fPriorite").value,
-            responsable: $("fResp").value,
+            responsable: responsable,
             deadline: $("fDeadline").value,
             progression: $("fProgress").value,
             notes: $("fNotes").value
@@ -299,6 +313,12 @@
             var id = $("poleForm").dataset.editing; if (id) ui.deletePoleFlow(id);
         });
         $("fProgress").addEventListener("input", function () { $("fProgressVal").textContent = this.value; });
+        $("fRespSelect").addEventListener("change", function () {
+            var isNew = this.value === "__new__";
+            var nf = $("fRespNew");
+            nf.hidden = !isNew;
+            if (isNew) setTimeout(function () { nf.focus(); }, 0);
+        });
         $("fPoleIcon").addEventListener("input", function () { poleFormIcon = this.value.replace(/^fa-/, ""); updateIconPreview(); });
 
         // Fermer les modales : boutons [data-close], clic sur le fond, touche Échap.

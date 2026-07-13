@@ -60,6 +60,13 @@
         return store.chantiersOfPole(poleId).filter(function (c) { return c.statut !== "termine"; }).length;
     };
 
+    // Liste unique des responsables (alimente la liste déroulante du formulaire).
+    store.responsables = function () {
+        var set = {};
+        store.chantiersArray().forEach(function (c) { if (c.responsable) set[c.responsable] = true; });
+        return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, "fr"); });
+    };
+
     // Plus petit = plus urgent (retards en premier, puis proche, sinon grand nombre).
     store.poleUrgency = function (poleId) {
         var active = store.chantiersOfPole(poleId).filter(function (c) { return c.statut !== "termine" && c.deadline; });
