@@ -70,35 +70,36 @@ Migration ultérieure possible vers Vite/React sans changer le modèle de donné
 
 ---
 
-## ☁️ Activer la synchronisation Firebase (optionnel)
+## ☁️ Synchronisation temps réel — Firebase Realtime Database
 
-Par défaut, les données restent dans le navigateur. Pour synchroniser entre appareils / équipe :
+L'app se connecte **automatiquement** à la base configurée par défaut
+(`src/js/persistence.js` → `DEFAULT_DB_URL`). Données stockées sous
+`workspaces/{espace}/{poles|chantiers}`, synchronisées en temps réel entre tous les
+navigateurs utilisant la même URL + le même espace de travail. Repli automatique en
+local si la base est injoignable.
 
-1. Créer un projet sur <https://console.firebase.google.com> puis une base **Firestore**
-   (mode production).
-2. Dans **Paramètres du projet → Vos applications → Web**, copier l'objet `firebaseConfig`.
-3. Dans l'app : bouton **Réglages** (⚙️) → coller la configuration → choisir un
-   **identifiant d'espace de travail** (ex. `ultra-mastermind`) → **Connecter**.
-   > Toutes les personnes utilisant le même identifiant partagent les mêmes chantiers.
-   > Au premier branchement, les données locales existantes sont téléversées automatiquement.
-4. Publier les règles de sécurité (`firestore.rules`) — voir ci-dessous.
+Pour changer de base ou revenir en local : bouton **Réglages** (⚙️) → *Base de données
+temps réel* → coller l'URL Realtime Database + l'espace de travail → **Connecter**
+(ou **Déconnecter**).
 
-La configuration web Firebase n'est **pas** un secret (elle est publique côté client) : la
-sécurité repose sur les **règles Firestore** et, idéalement, **App Check**.
+### ⚠️ Règles de sécurité (indispensable)
 
-### Règles Firestore
+Une base Firebase est **verrouillée par défaut** : tant que les règles ne sont pas
+publiées, l'app affiche `permission_denied` et retombe en mode local.
 
-Le fichier [`firestore.rules`](firestore.rules) confine les accès à la collection
-`workspaces/**`. Pour un usage réellement protégé, activez **App Check** (bloque les clients
-hors application, sans imposer de connexion utilisateur) ou une authentification.
-
-Déploiement des règles :
+Le fichier [`database.rules.json`](database.rules.json) ouvre l'accès à `workspaces/**`.
+Déploiement :
 
 ```bash
 npm i -g firebase-tools
 firebase login
-firebase deploy --only firestore:rules
+firebase use <votre-projet>
+firebase deploy --only database
 ```
+
+> Ces règles sont **ouvertes** (lecture/écriture publiques) : convient à un outil interne
+> si l'URL reste privée. Pour un accès réellement protégé, ajoutez **Firebase Auth** et
+> remplacez `".read"/".write": true` par `"auth != null"`.
 
 ---
 

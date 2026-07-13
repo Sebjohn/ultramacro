@@ -116,7 +116,7 @@
         // Synchronise l'icône/meta avec le thème déjà posé par le script du <head>.
         applyTheme(document.documentElement.getAttribute("data-theme") || "light");
 
-        // Re-rendu à chaque changement de données (local ou temps réel Firestore).
+        // Re-rendu à chaque changement de données (local ou temps réel Realtime Database).
         U.store.subscribe(function () { U.views.render(); });
 
         // Active le repository (cloud si configuré, sinon local).

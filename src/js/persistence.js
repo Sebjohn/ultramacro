@@ -7,16 +7,18 @@
 
    Objectif "aucun bug de sauvegarde" :
    - écritures par entité (jamais d'écrasement global) ;
-   - Firestore en temps réel + persistance hors-ligne ;
-   - repli localStorage transparent si Firebase n'est pas configuré.
+   - Firebase Realtime Database en temps réel (file d'attente hors-ligne) ;
+   - repli localStorage transparent si la base est injoignable.
    ========================================================= */
 (function (U) {
     "use strict";
 
     var FB_VERSION = "10.12.5";
+    // URL Realtime Database par défaut : l'app déployée s'y connecte automatiquement.
+    var DEFAULT_DB_URL = "https://ultra-macro-default-rtdb.europe-west1.firebasedatabase.app/";
     var LS = {
         DATA: "ultra_macro_data_v3",
-        CFG: "ultra_macro_fb_config",
+        DBURL: "ultra_macro_db_url",
         WS: "ultra_macro_fb_workspace",
         LEGACY_POLES: "ultra_macro_poles",
         LEGACY_CHANT: "ultra_macro_chantiers"
@@ -165,7 +167,7 @@
     LocalRepo.prototype.stop = function () {};
 
     /* ================================================================== */
-    /*  REPOSITORY FIRESTORE (SDK compat, chargé à la demande)            */
+    /*  REPOSITORY REALTIME DATABASE (SDK compat, chargé à la demande)    */
     /* ================================================================== */
     var fbApp = null;
 
@@ -183,127 +185,88 @@
     function loadFirebaseSDK() {
         var base = "https://www.gstatic.com/firebasejs/" + FB_VERSION + "/";
         return loadScript(base + "firebase-app-compat.js")
-            .then(function () { return loadScript(base + "firebase-firestore-compat.js"); });
+            .then(function () { return loadScript(base + "firebase-database-compat.js"); });
     }
 
-    function FirestoreRepo(config, workspaceId) {
+    function safeParse(str, fallback) { try { return str ? JSON.parse(str) : fallback; } catch (e) { return fallback; } }
+
+    function RealtimeRepo(dbUrl, workspaceId) {
         this.mode = "cloud";
-        this.config = config;
+        this.dbUrl = dbUrl;
         this.workspaceId = workspaceId || "default";
         this.poles = {};
         this.chantiers = {};
-        this._unsub = [];
         this._loaded = { poles: false, chantiers: false };
+        this._refs = [];
     }
 
-    FirestoreRepo.prototype.start = function () {
+    RealtimeRepo.prototype.start = function () {
         var self = this;
         setStatus("saving", "Connexion…");
         return loadFirebaseSDK().then(function () {
             var fb = window.firebase;
             if (fbApp) { try { fbApp.delete(); } catch (e) {} fbApp = null; }
-            fbApp = fb.initializeApp(self.config, "ultra-" + Date.now());
-            self.db = fbApp.firestore();
-            try { self.db.enablePersistence({ synchronizeTabs: true }).catch(function () {}); } catch (e) {}
-            self.ws = self.db.collection("workspaces").doc(self.workspaceId);
+            fbApp = fb.initializeApp({ databaseURL: self.dbUrl }, "ultra-" + Date.now());
+            self.db = fbApp.database();
+            self.base = self.db.ref("workspaces/" + self.workspaceId);
             return self._bootstrap();
         });
     };
 
-    FirestoreRepo.prototype._emit = function () {
+    RealtimeRepo.prototype._emit = function () {
         if (!this._loaded.poles || !this._loaded.chantiers) return;
         U.store.set({ poles: this.poles, chantiers: this.chantiers });
     };
 
-    FirestoreRepo.prototype._listen = function () {
+    RealtimeRepo.prototype._listen = function () {
         var self = this;
-        this._unsub.push(this.ws.collection("poles").onSnapshot(function (snap) {
-            var m = {}; snap.forEach(function (d) { m[d.id] = Object.assign({ id: d.id }, d.data()); });
-            self.poles = m; self._loaded.poles = true; self._emit();
-            setStatus(snap.metadata.hasPendingWrites ? "saving" : "saved");
-        }, function (err) { console.error(err); setStatus("error", "Erreur de synchro"); }));
-
-        this._unsub.push(this.ws.collection("chantiers").onSnapshot(function (snap) {
-            var m = {}; snap.forEach(function (d) { m[d.id] = Object.assign({ id: d.id }, d.data()); });
-            self.chantiers = m; self._loaded.chantiers = true; self._emit();
-            setStatus(snap.metadata.hasPendingWrites ? "saving" : "saved");
-        }, function (err) { console.error(err); setStatus("error", "Erreur de synchro"); }));
+        function bind(key) {
+            var ref = self.base.child(key);
+            var cb = ref.on("value", function (snap) {
+                self[key] = snap.val() || {};
+                self._loaded[key] = true;
+                self._emit();
+                setStatus("saved");
+            }, function (err) { console.error(err); setStatus("error", "Erreur de synchro"); });
+            self._refs.push({ ref: ref, cb: cb });
+        }
+        bind("poles");
+        bind("chantiers");
     };
 
-    // Au premier branchement : si le cloud est vide et qu'on a des données locales, on les téléverse.
-    FirestoreRepo.prototype._bootstrap = function () {
+    // Premier branchement : si le workspace cloud est vide, on téléverse les données locales (ou le seed).
+    RealtimeRepo.prototype._bootstrap = function () {
         var self = this;
-        return Promise.all([
-            this.ws.collection("poles").limit(1).get(),
-            this.ws.collection("chantiers").limit(1).get()
-        ]).then(function (res) {
-            var cloudEmpty = res[0].empty && res[1].empty;
-            if (cloudEmpty) {
-                var local = normalize({
-                    poles: safeParse(localStorage.getItem(LS.DATA), {}).poles,
-                    chantiers: safeParse(localStorage.getItem(LS.DATA), {}).chantiers
-                });
+        return self.base.once("value").then(function (snap) {
+            var val = snap.val() || {};
+            var empty = !val.poles && !val.chantiers;
+            if (empty) {
+                var local = normalize(safeParse(localStorage.getItem(LS.DATA), {}));
                 var hasLocal = Object.keys(local.poles).length || Object.keys(local.chantiers).length;
-                if (hasLocal) return self._uploadAll(local).then(function () { self._listen(); });
+                var initial = hasLocal ? local : seed();
+                return self.base.set({ poles: initial.poles, chantiers: initial.chantiers })
+                    .then(function () { self._listen(); });
             }
             self._listen();
         });
     };
 
-    FirestoreRepo.prototype._uploadAll = function (data) {
-        var batch = this.db.batch();
-        var self = this;
-        Object.keys(data.poles).forEach(function (id) { batch.set(self.ws.collection("poles").doc(id), data.poles[id]); });
-        Object.keys(data.chantiers).forEach(function (id) { batch.set(self.ws.collection("chantiers").doc(id), data.chantiers[id]); });
-        return batch.commit();
-    };
+    function cloudFail(e) { console.error(e); setStatus("error", "Échec sauvegarde"); U.ui && U.ui.toast("Sauvegarde cloud échouée", "error"); }
 
-    FirestoreRepo.prototype.upsertPole = function (p) {
-        var self = this; setStatus("saving");
-        this.ws.collection("poles").doc(p.id).set(p).catch(function (e) { console.error(e); setStatus("error", "Échec sauvegarde"); U.ui && U.ui.toast("Sauvegarde cloud échouée", "error"); });
+    RealtimeRepo.prototype.upsertPole = function (p) { setStatus("saving"); this.base.child("poles/" + p.id).set(p).catch(cloudFail); };
+    RealtimeRepo.prototype.deletePole = function (id) { this.base.child("poles/" + id).remove().catch(cloudFail); };
+    RealtimeRepo.prototype.upsertChantier = function (c) { setStatus("saving"); this.base.child("chantiers/" + c.id).set(c).catch(cloudFail); };
+    RealtimeRepo.prototype.deleteChantier = function (id) { this.base.child("chantiers/" + id).remove().catch(cloudFail); };
+    RealtimeRepo.prototype.bulkReplace = function (data) {
+        var n = normalize(data);
+        this.base.set({ poles: n.poles, chantiers: n.chantiers }).catch(cloudFail);
     };
-    FirestoreRepo.prototype.deletePole = function (id) {
-        this.ws.collection("poles").doc(id).delete().catch(function (e) { console.error(e); });
-    };
-    FirestoreRepo.prototype.upsertChantier = function (c) {
-        setStatus("saving");
-        this.ws.collection("chantiers").doc(c.id).set(c).catch(function (e) { console.error(e); setStatus("error", "Échec sauvegarde"); U.ui && U.ui.toast("Sauvegarde cloud échouée", "error"); });
-    };
-    FirestoreRepo.prototype.deleteChantier = function (id) {
-        this.ws.collection("chantiers").doc(id).delete().catch(function (e) { console.error(e); });
-    };
-    FirestoreRepo.prototype.bulkReplace = function (data) {
-        var self = this; var norm = normalize(data);
-        // Supprime ce qui n'existe plus puis (ré)écrit tout.
-        var batch = this.db.batch();
-        Object.keys(this.poles).forEach(function (id) { if (!norm.poles[id]) batch.delete(self.ws.collection("poles").doc(id)); });
-        Object.keys(this.chantiers).forEach(function (id) { if (!norm.chantiers[id]) batch.delete(self.ws.collection("chantiers").doc(id)); });
-        Object.keys(norm.poles).forEach(function (id) { batch.set(self.ws.collection("poles").doc(id), norm.poles[id]); });
-        Object.keys(norm.chantiers).forEach(function (id) { batch.set(self.ws.collection("chantiers").doc(id), norm.chantiers[id]); });
-        batch.commit().catch(function (e) { console.error(e); });
-    };
-    FirestoreRepo.prototype.snapshot = function () { return { poles: this.poles, chantiers: this.chantiers }; };
-    FirestoreRepo.prototype.stop = function () {
-        this._unsub.forEach(function (u) { try { u(); } catch (e) {} });
-        this._unsub = [];
+    RealtimeRepo.prototype.snapshot = function () { return { poles: this.poles, chantiers: this.chantiers }; };
+    RealtimeRepo.prototype.stop = function () {
+        this._refs.forEach(function (r) { try { r.ref.off("value", r.cb); } catch (e) {} });
+        this._refs = [];
         if (fbApp) { try { fbApp.delete(); } catch (e) {} fbApp = null; }
     };
-
-    /* ------------------------------------------------------------------ */
-    /*  Utilitaires config                                                */
-    /* ------------------------------------------------------------------ */
-    function safeParse(str, fallback) { try { return str ? JSON.parse(str) : fallback; } catch (e) { return fallback; } }
-
-    // Accepte du JSON strict OU un littéral objet JS (comme copié depuis la console Firebase).
-    function parseConfig(text) {
-        text = (text || "").trim();
-        if (!text) return null;
-        var start = text.indexOf("{"), end = text.lastIndexOf("}");
-        if (start === -1 || end === -1) return null;
-        var body = text.slice(start, end + 1);
-        try { return JSON.parse(body); } catch (e) {}
-        try { return (new Function("return (" + body + ")"))(); } catch (e) { return null; }
-    }
 
     /* ================================================================== */
     /*  API publique                                                      */
@@ -313,44 +276,48 @@
     var persistence = {
         get mode() { return active ? active.mode : "local"; },
         getWorkspace: function () { return localStorage.getItem(LS.WS) || "default"; },
-        getRawConfig: function () { return localStorage.getItem(LS.CFG) || ""; },
-        hasConfig: function () { return !!localStorage.getItem(LS.CFG); },
+        // URL sauvegardée si présente, sinon URL par défaut (auto-connexion au 1er lancement).
+        getDbUrl: function () {
+            var u = localStorage.getItem(LS.DBURL);
+            return (u === null) ? DEFAULT_DB_URL : u;
+        },
 
-        // Démarrage : cloud si configuré, sinon local (avec repli en cas d'échec).
+        // Démarrage : cloud si une URL est disponible, sinon local (avec repli en cas d'échec).
         init: function () {
-            var cfgStr = localStorage.getItem(LS.CFG);
-            if (cfgStr) {
-                var cfg = safeParse(cfgStr, null);
-                if (cfg) {
-                    active = new FirestoreRepo(cfg, this.getWorkspace());
-                    return active.start().catch(function (e) {
-                        console.error("Firebase KO, repli local :", e);
-                        U.ui && U.ui.toast("Connexion Firebase impossible — mode local", "error");
-                        active = new LocalRepo(); active.start();
-                    });
-                }
+            var url = this.getDbUrl();
+            if (url) {
+                active = new RealtimeRepo(url, this.getWorkspace());
+                return active.start().catch(function (e) {
+                    console.error("Realtime DB KO, repli local :", e);
+                    U.ui && U.ui.toast("Connexion à la base impossible — mode local", "error");
+                    active = new LocalRepo(); active.start();
+                });
             }
             active = new LocalRepo(); active.start();
             return Promise.resolve();
         },
 
-        // Connexion cloud depuis les réglages.
-        connectCloud: function (configText, workspaceId) {
-            var cfg = parseConfig(configText);
-            if (!cfg || !cfg.projectId) return Promise.reject(new Error("Configuration invalide"));
+        // Connexion cloud depuis les réglages (URL Realtime Database).
+        connectCloud: function (dbUrl, workspaceId) {
+            dbUrl = (dbUrl || "").trim();
+            if (!/^https?:\/\/[^\s]+/.test(dbUrl)) return Promise.reject(new Error("URL invalide (https://…firebasedatabase.app)"));
             var ws = (workspaceId || "default").trim() || "default";
-            localStorage.setItem(LS.CFG, JSON.stringify(cfg));
+            localStorage.setItem(LS.DBURL, dbUrl);
             localStorage.setItem(LS.WS, ws);
             if (active) active.stop();
-            active = new FirestoreRepo(cfg, ws);
+            active = new RealtimeRepo(dbUrl, ws);
             return active.start();
         },
 
         // Retour au mode local : on conserve un instantané des données courantes.
         disconnectCloud: function () {
+            // Conserve les données cloud en local — mais ne JAMAIS écraser le local avec un snapshot vide
+            // (ex. connexion refusée/échouée), sinon on perdrait les chantiers existants.
             var snap = active ? active.snapshot() : null;
-            if (snap) persistLocal(normalize(snap));
-            localStorage.removeItem(LS.CFG);
+            if (snap && (Object.keys(snap.poles || {}).length || Object.keys(snap.chantiers || {}).length)) {
+                persistLocal(normalize(snap));
+            }
+            localStorage.setItem(LS.DBURL, "");   // reste en local (désactive l'auto-connexion)
             if (active) active.stop();
             active = new LocalRepo();
             active.start();

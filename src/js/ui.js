@@ -252,14 +252,14 @@
 
     /* ===================== RÉGLAGES ===================== */
     ui.openSettings = function () {
-        $("fbConfig").value = U.persistence.getRawConfig();
+        $("fbDbUrl").value = U.persistence.getDbUrl();
         $("fbWorkspace").value = U.persistence.getWorkspace();
         var cloud = U.persistence.mode === "cloud";
         $("fbConnect").innerHTML = cloud ? '<i class="fa-solid fa-rotate"></i> Reconnecter' : '<i class="fa-solid fa-plug"></i> Connecter';
         $("fbDisconnect").hidden = !cloud;
         $("storageDesc").textContent = cloud
-            ? "Vos chantiers sont synchronisés dans le cloud (temps réel + hors-ligne). Ils sont partagés par tous ceux qui utilisent le même espace de travail."
-            : "Les données sont enregistrées dans ce navigateur. Connectez Firebase pour synchroniser entre appareils et avec votre équipe.";
+            ? "Vos chantiers sont synchronisés en temps réel dans la base Firebase. Ils sont partagés par tous ceux qui utilisent la même URL et le même espace de travail."
+            : "Les données sont enregistrées dans ce navigateur. Connectez une base Realtime Database pour synchroniser entre appareils et avec votre équipe.";
         $("fbHint").textContent = "";
         ui.openModal("settingsModal");
     };
@@ -268,10 +268,10 @@
         $("fbConnect").onclick = function () {
             var btn = this; btn.disabled = true;
             $("fbHint").textContent = "Connexion en cours…";
-            U.persistence.connectCloud($("fbConfig").value, $("fbWorkspace").value)
+            U.persistence.connectCloud($("fbDbUrl").value, $("fbWorkspace").value)
                 .then(function () {
                     btn.disabled = false;
-                    ui.toast("Connecté à Firebase", "success");
+                    ui.toast("Connecté à la base temps réel", "success");
                     ui.openSettings();
                 })
                 .catch(function (err) {

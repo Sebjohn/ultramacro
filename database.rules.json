@@ -1,0 +1,11 @@
+{
+  "rules": {
+    "workspaces": {
+      ".read": true,
+      ".write": true,
+      "$workspaceId": {
+        ".indexOn": ["order"]
+      }
+    }
+  }
+}

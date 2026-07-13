@@ -272,16 +272,16 @@
                 <!-- Firebase -->
                 <div class="settings-block">
                     <div class="settings-block-head">
-                        <h4><i class="fa-solid fa-cloud"></i> Cloud Firebase (optionnel)</h4>
+                        <h4><i class="fa-solid fa-cloud"></i> Base de données temps réel (Firebase)</h4>
                     </div>
                     <div class="field">
-                        <label for="fbConfig">Configuration Firebase</label>
-                        <textarea id="fbConfig" rows="7" spellcheck="false" placeholder="Collez ici l'objet firebaseConfig depuis la console Firebase :&#10;{&#10;  apiKey: &quot;…&quot;,&#10;  authDomain: &quot;…&quot;,&#10;  projectId: &quot;…&quot;,&#10;  …&#10;}"></textarea>
+                        <label for="fbDbUrl">URL Realtime Database</label>
+                        <input type="text" id="fbDbUrl" spellcheck="false" autocomplete="off" placeholder="https://votre-projet-rtdb.europe-west1.firebasedatabase.app/" />
                     </div>
                     <div class="field">
                         <label for="fbWorkspace">Identifiant d'espace de travail</label>
                         <input type="text" id="fbWorkspace" placeholder="default" autocomplete="off" />
-                        <p class="muted small">Toutes les personnes utilisant le même identifiant partagent les mêmes chantiers.</p>
+                        <p class="muted small">Toutes les personnes utilisant la même URL et le même identifiant partagent les mêmes chantiers.</p>
                     </div>
                     <div class="settings-actions">
                         <button class="btn btn-primary" id="fbConnect"><i class="fa-solid fa-plug"></i> Connecter</button>
