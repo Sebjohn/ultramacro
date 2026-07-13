@@ -37,7 +37,6 @@
        ============================================================ */
     views.renderDashboard = function () {
         renderKPIs();
-        renderDeadlineStrip();
         renderPolesGrid();
     };
 
@@ -78,19 +77,6 @@
             if (p < 1) requestAnimationFrame(step); else el.textContent = to;
         }
         requestAnimationFrame(step);
-    }
-
-    function renderDeadlineStrip() {
-        var list = U.store.upcomingDeadlines(6);
-        $("deadlineStrip").innerHTML = list.map(function (c) {
-            var pole = U.store.pole(c.pole);
-            var color = pole ? U.themeColor(pole.theme) : "var(--faint)";
-            var cls = U.urgencyClass(c);
-            return '<button class="dl-pill ' + cls + '" data-act="edit-chantier" data-cid="' + c.id + '">' +
-                '<span class="dl-dot" style="background:' + color + '"></span>' +
-                '<span class="dl-when">' + U.escape(U.relativeLabel(c.deadline)) + "</span>" +
-                '<span class="dl-name">' + U.escape(c.nom) + "</span></button>";
-        }).join("");
     }
 
     function renderPolesGrid() {
@@ -335,7 +321,7 @@
     }
 
     views.init = function () {
-        ["polesGrid", "deadlineStrip", "kanban", "kanbanGlobal", "timeline"].forEach(function (id) {
+        ["polesGrid", "kanban", "kanbanGlobal", "timeline"].forEach(function (id) {
             $(id).addEventListener("click", handleAction);
         });
         bindDnD($("kanban"));
