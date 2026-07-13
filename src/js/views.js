@@ -141,31 +141,48 @@
         $("detailStats").textContent = all.length + " chantier" + (all.length > 1 ? "s" : "") + " · " + U.store.poleActiveCount(poleId) + " actifs";
         $("detailEditPole").onclick = function () { U.ui.openPole(poleId); };
 
-        var kanban = $("kanban");
-        kanban.innerHTML = U.STATUS_ORDER.map(function (st) {
-            var cards = U.store.sortByFocus(visible.filter(function (c) { return c.statut === st; }));
+        $("kanban").innerHTML = kanbanColumnsHTML(visible, { showPole: false });
+    };
+
+    // Vue Kanban générale : tous les chantiers, tous pôles confondus.
+    views.renderKanbanGlobal = function () {
+        var q = U.viewState.search;
+        var list = U.store.chantiersArray().filter(function (c) { return matches(c, q); });
+        $("kanbanGlobal").innerHTML = kanbanColumnsHTML(list, { showPole: true });
+    };
+
+    function faIcon(cls) { return cls.replace("fa-solid ", "").replace("fa-regular ", ""); }
+
+    // Génère les 3 colonnes de statut à partir d'une liste de chantiers.
+    function kanbanColumnsHTML(list, opts) {
+        return U.STATUS_ORDER.map(function (st) {
+            var cards = U.store.sortByFocus(list.filter(function (c) { return c.statut === st; }));
             var body = cards.length
-                ? cards.map(function (c) { return cardHTML(c, color); }).join("")
+                ? cards.map(function (c) { return cardHTML(c, opts); }).join("")
                 : '<div class="kcol-empty">Déposez un chantier ici</div>';
             return '<div class="kcol ' + st + '" data-status="' + st + '">' +
                 '<div class="kcol-head"><span class="kcol-title"><i class="fa-solid ' + faIcon(S[st].icon) + '"></i>' + S[st].label + "</span>" +
                 '<span class="kcol-count">' + cards.length + "</span></div>" +
                 '<div class="kcol-body" data-status="' + st + '">' + body + "</div></div>";
         }).join("");
-    };
+    }
 
-    function faIcon(cls) { return cls.replace("fa-solid ", "").replace("fa-regular ", ""); }
-
-    function cardHTML(c, poleColor) {
+    function cardHTML(c, opts) {
+        opts = opts || {};
         var prio = P[c.priorite] || P[U.DEFAULT_PRIORITY];
+        var pole = U.store.pole(c.pole);
+        var poleColor = pole ? U.themeColor(pole.theme) : "var(--faint)";
         var progress = c.statut === "termine" ? 100 : (Number(c.progression) || 0);
         var progressHTML = (progress > 0 && c.statut !== "termine")
             ? '<div class="cc-progress"><div style="width:' + progress + '%"></div></div>' : "";
         var notes = c.notes ? '<div class="cc-notes">' + U.escape(c.notes) + "</div>" : "";
+        var poleTag = (opts.showPole && pole)
+            ? '<button class="cc-pole" data-act="open-pole" data-id="' + pole.id + '" style="--pole:' + poleColor + '"><i class="fa-solid fa-' + U.escape(pole.icon) + '"></i>' + U.escape(pole.name) + "</button>"
+            : "";
         return '<div class="chantier-card" draggable="true" data-cid="' + c.id + '" style="--prio:' + prio.color + '; --pole:' + poleColor + '">' +
             '<div class="cc-top"><div class="cc-name">' + U.escape(c.nom) + "</div>" +
                 '<span class="cc-prio" title="Priorité ' + prio.label + '">' + prio.label + "</span></div>" +
-            notes + progressHTML +
+            poleTag + notes + progressHTML +
             '<div class="cc-foot"><div class="cc-left">' + avatar(c.responsable) + dateBadge(c) + "</div>" +
                 '<div class="cc-actions">' +
                     '<button class="cc-act" data-act="edit-chantier" data-cid="' + c.id + '" title="Modifier"><i class="fa-solid fa-pen"></i></button>' +
@@ -235,6 +252,7 @@
         var v = U.viewState.current;
         if (v === "dashboard") views.renderDashboard();
         else if (v === "pole") views.renderKanban();
+        else if (v === "kanban") views.renderKanbanGlobal();
         else if (v === "calendar") views.renderTimeline();
     };
 
@@ -251,32 +269,31 @@
         else if (a.act === "delete-chantier") { e.stopPropagation(); U.ui.deleteChantierFlow(a.cid); }
     }
 
-    /* --------- Glisser-déposer Kanban --------- */
+    /* --------- Glisser-déposer Kanban (par pôle + général) --------- */
     var dragId = null;
-    function setupDnD() {
-        var kanban = $("kanban");
-        kanban.addEventListener("dragstart", function (e) {
+    function bindDnD(box) {
+        box.addEventListener("dragstart", function (e) {
             var card = e.target.closest(".chantier-card"); if (!card) return;
             dragId = card.dataset.cid; card.classList.add("dragging");
             e.dataTransfer.effectAllowed = "move";
             try { e.dataTransfer.setData("text/plain", dragId); } catch (err) {}
         });
-        kanban.addEventListener("dragend", function (e) {
+        box.addEventListener("dragend", function (e) {
             var card = e.target.closest(".chantier-card"); if (card) card.classList.remove("dragging");
-            kanban.querySelectorAll(".drop-hover").forEach(function (c) { c.classList.remove("drop-hover"); });
+            box.querySelectorAll(".drop-hover").forEach(function (c) { c.classList.remove("drop-hover"); });
             dragId = null;
         });
-        kanban.addEventListener("dragover", function (e) {
+        box.addEventListener("dragover", function (e) {
             var col = e.target.closest(".kcol"); if (!col) return;
             e.preventDefault(); e.dataTransfer.dropEffect = "move";
-            kanban.querySelectorAll(".drop-hover").forEach(function (c) { if (c !== col) c.classList.remove("drop-hover"); });
+            box.querySelectorAll(".drop-hover").forEach(function (c) { if (c !== col) c.classList.remove("drop-hover"); });
             col.classList.add("drop-hover");
         });
-        kanban.addEventListener("dragleave", function (e) {
+        box.addEventListener("dragleave", function (e) {
             var col = e.target.closest(".kcol");
             if (col && !col.contains(e.relatedTarget)) col.classList.remove("drop-hover");
         });
-        kanban.addEventListener("drop", function (e) {
+        box.addEventListener("drop", function (e) {
             var col = e.target.closest(".kcol"); if (!col) return;
             e.preventDefault();
             col.classList.remove("drop-hover");
@@ -293,10 +310,11 @@
     }
 
     views.init = function () {
-        ["polesGrid", "deadlineStrip", "kanban", "timeline"].forEach(function (id) {
+        ["polesGrid", "deadlineStrip", "kanban", "kanbanGlobal", "timeline"].forEach(function (id) {
             $(id).addEventListener("click", handleAction);
         });
-        setupDnD();
+        bindDnD($("kanban"));
+        bindDnD($("kanbanGlobal"));
     };
 
     U.views = views;

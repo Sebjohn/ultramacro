@@ -33,6 +33,9 @@
             <button class="nav-pill is-active" data-nav="dashboard">
                 <i class="fa-solid fa-grip"></i><span>Vue d'ensemble</span>
             </button>
+            <button class="nav-pill" data-nav="kanban">
+                <i class="fa-solid fa-table-columns"></i><span>Kanban</span>
+            </button>
             <button class="nav-pill" data-nav="calendar">
                 <i class="fa-regular fa-calendar"></i><span>Calendrier</span>
             </button>
@@ -108,6 +111,17 @@
                 </div>
 
                 <div class="kanban" id="kanban"></div>
+            </div>
+        </section>
+
+        <!-- VUE : KANBAN GÉNÉRAL (tous pôles) -->
+        <section id="view-kanban" class="view">
+            <div class="view-inner">
+                <div class="section-head">
+                    <h2 class="section-title"><i class="fa-solid fa-table-columns"></i> Kanban général</h2>
+                    <p class="muted small section-hint">Tous les chantiers, tous pôles confondus — glissez une carte pour changer son statut.</p>
+                </div>
+                <div class="kanban kanban-global" id="kanbanGlobal"></div>
             </div>
         </section>
 

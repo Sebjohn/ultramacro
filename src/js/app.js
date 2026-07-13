@@ -15,21 +15,23 @@
     };
 
     /* --------- Navigation --------- */
+    var TARGETS = { pole: "view-pole", kanban: "view-kanban", calendar: "view-calendar", dashboard: "view-dashboard" };
+
     U.nav = function (view, param) {
         if (view === "pole") {
             if (!param || !U.store.pole(param)) { view = "dashboard"; }
             else U.viewState.pole = param;
         }
+        if (view !== "pole") U.viewState.pole = null;
         U.viewState.current = view;
 
         document.querySelectorAll(".view").forEach(function (v) { v.classList.remove("is-active"); });
-        var target = view === "pole" ? "view-pole" : (view === "calendar" ? "view-calendar" : "view-dashboard");
-        $(target).classList.add("is-active");
+        $(TARGETS[view] || "view-dashboard").classList.add("is-active");
 
         // Onglets : "Vue d'ensemble" reste actif quand on descend dans un pôle.
         document.querySelectorAll(".main-nav .nav-pill").forEach(function (b) {
-            var isActive = (b.dataset.nav === "calendar" && view === "calendar")
-                || (b.dataset.nav === "dashboard" && (view === "dashboard" || view === "pole"));
+            var isActive = b.dataset.nav === view
+                || (b.dataset.nav === "dashboard" && view === "pole");
             b.classList.toggle("is-active", isActive);
         });
 

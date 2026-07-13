@@ -11,8 +11,8 @@ responsables, Kanban et calendrier. Interface « executive » sombre, sans étap
 
 - **Vue d'ensemble** — chaque pôle sur une carte, avec ses **priorités** (triées par
   importance puis échéance), sa progression et le détail À venir / En cours / Terminé.
-- **Kanban par pôle** — colonnes À venir / En cours / Terminé, **glisser-déposer** pour
-  changer un statut.
+- **Kanban par pôle** et **Kanban général** (tous pôles confondus) — colonnes
+  À venir / En cours / Terminé, **glisser-déposer** pour changer un statut.
 - **Calendrier / échéances** — chantiers regroupés par urgence (En retard, Cette semaine,
   Ce mois-ci, Plus tard).
 - **Pôles configurables** — nom, couleur, icône (sélecteur visuel), ajout / édition / suppression.
