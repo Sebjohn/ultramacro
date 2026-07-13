@@ -39,6 +39,22 @@
         $("appMain").scrollTop = 0;
     };
 
+    /* --------- Thème clair / sombre --------- */
+    var THEME_KEY = "ultra_macro_theme";
+    function applyTheme(t) {
+        document.documentElement.setAttribute("data-theme", t);
+        var icon = document.querySelector("#themeToggle i");
+        if (icon) icon.className = t === "dark" ? "fa-solid fa-sun" : "fa-solid fa-moon";
+        var tt = $("themeToggle"); if (tt) tt.title = t === "dark" ? "Passer en clair" : "Passer en sombre";
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute("content", t === "dark" ? "#14100B" : "#F3EEE4");
+    }
+    function toggleTheme() {
+        var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+        try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+        applyTheme(next);
+    }
+
     /* --------- Câblage --------- */
     function wire() {
         // Boutons de navigation (marque, onglets, retour)
@@ -56,6 +72,7 @@
                 if (a === "new-chantier") U.ui.openChantier();
                 else if (a === "new-pole") U.ui.openPole();
                 else if (a === "open-settings") U.ui.openSettings();
+                else if (a === "toggle-theme") toggleTheme();
             });
         });
 
@@ -96,6 +113,8 @@
         U.ui.init();
         U.views.init();
         wire();
+        // Synchronise l'icône/meta avec le thème déjà posé par le script du <head>.
+        applyTheme(document.documentElement.getAttribute("data-theme") || "light");
 
         // Re-rendu à chaque changement de données (local ou temps réel Firestore).
         U.store.subscribe(function () { U.views.render(); });

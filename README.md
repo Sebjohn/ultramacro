@@ -18,6 +18,8 @@ responsables, Kanban et calendrier. Interface « executive » sombre, sans étap
 - **Pôles configurables** — nom, couleur, icône (sélecteur visuel), ajout / édition / suppression.
 - **Chantiers** — statut, priorité, responsable, échéance, avancement (%), notes.
 - **Recherche** globale et tris (ordre défini / urgence / charge).
+- **Thème clair & sombre** (identité Ultra) avec bascule mémorisée, suit la préférence système par défaut.
+- **Assigné par défaut** par pôle (pré-remplit le responsable des nouveaux chantiers).
 - **Sauvegarde fiable** — local par défaut, **Firebase Firestore** en option (temps réel +
   hors-ligne), export / import JSON.
 
