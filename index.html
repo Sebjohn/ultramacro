@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Ultra Macro — pilotage exécutif des chantiers par pôle : priorités, échéances, responsables." />
+    <meta name="theme-color" content="#09090b" />
+    <title>Ultra Macro — Pilotage des chantiers</title>
+
+    <!-- Favicon (SVG inline, aucune dépendance) -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%237c3aed'/%3E%3Cpath d='M12 5l6 3.2-6 3.2-6-3.2L12 5z' fill='white'/%3E%3Cpath d='M6 12.2l6 3.2 6-3.2M6 15.6l6 3.2 6-3.2' stroke='white' stroke-width='1.4' fill='none' stroke-linejoin='round' opacity='0.6'/%3E%3C/svg%3E" />
+
+    <!-- Typographie -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+    <!-- Icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+    <!-- Design system -->
+    <link rel="stylesheet" href="src/styles/app.css" />
+</head>
+<body>
+    <!-- ============ HEADER ============ -->
+    <header class="app-header">
+        <div class="brand" role="button" tabindex="0" data-nav="dashboard" title="Vue d'ensemble">
+            <span class="brand-mark"><i class="fa-solid fa-layer-group"></i></span>
+            <span class="brand-name">Ultra <span class="brand-name-muted">Macro</span></span>
+        </div>
+
+        <nav class="main-nav" aria-label="Navigation principale">
+            <button class="nav-pill is-active" data-nav="dashboard">
+                <i class="fa-solid fa-grip"></i><span>Vue d'ensemble</span>
+            </button>
+            <button class="nav-pill" data-nav="calendar">
+                <i class="fa-regular fa-calendar"></i><span>Calendrier</span>
+            </button>
+        </nav>
+
+        <div class="header-actions">
+            <div class="search-box">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="search" id="globalSearch" placeholder="Rechercher un chantier…" autocomplete="off" aria-label="Rechercher" />
+            </div>
+            <button class="sync-chip" id="syncChip" title="État de la sauvegarde" data-action="open-settings">
+                <span class="sync-dot"></span>
+                <span class="sync-label" id="syncLabel">Local</span>
+            </button>
+            <button class="icon-btn" data-action="open-settings" title="Réglages" aria-label="Réglages">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+            <button class="btn btn-primary" data-action="new-chantier">
+                <i class="fa-solid fa-plus"></i><span class="btn-label">Nouveau chantier</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- ============ MAIN ============ -->
+    <main class="app-main" id="appMain">
+
+        <!-- VUE : DASHBOARD MACRO -->
+        <section id="view-dashboard" class="view is-active">
+            <div class="view-inner">
+                <!-- KPIs -->
+                <div class="kpi-row" id="kpiRow"></div>
+
+                <!-- Bandeau échéances proches -->
+                <div class="deadline-strip" id="deadlineStrip"></div>
+
+                <div class="section-head">
+                    <h2 class="section-title"><i class="fa-solid fa-diagram-project"></i> Priorités par pôle</h2>
+                    <div class="section-tools">
+                        <div class="seg" id="poleSort" role="tablist" aria-label="Trier les pôles">
+                            <button class="seg-btn is-active" data-sort="manual">Ordre défini</button>
+                            <button class="seg-btn" data-sort="urgent">Urgence</button>
+                            <button class="seg-btn" data-sort="load">Charge</button>
+                        </div>
+                        <button class="btn btn-ghost" data-action="new-pole">
+                            <i class="fa-solid fa-folder-plus"></i><span>Ajouter un pôle</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="poles-grid" id="polesGrid"></div>
+                <div class="empty-state" id="polesEmpty" hidden>
+                    <i class="fa-solid fa-folder-open"></i>
+                    <p>Aucun pôle configuré.</p>
+                    <button class="btn btn-primary" data-action="new-pole"><i class="fa-solid fa-folder-plus"></i> Créer le premier pôle</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- VUE : DÉTAIL PÔLE (KANBAN) -->
+        <section id="view-pole" class="view">
+            <div class="view-inner pole-detail">
+                <div class="detail-head">
+                    <button class="icon-btn" data-nav="dashboard" title="Retour"><i class="fa-solid fa-arrow-left"></i></button>
+                    <span class="detail-icon" id="detailIcon"></span>
+                    <div class="detail-titles">
+                        <h2 id="detailTitle">Pôle</h2>
+                        <p id="detailStats" class="muted">0 chantier</p>
+                    </div>
+                    <div class="detail-actions">
+                        <button class="btn btn-ghost" id="detailEditPole"><i class="fa-solid fa-sliders"></i><span>Configurer</span></button>
+                        <button class="btn btn-primary" data-action="new-chantier"><i class="fa-solid fa-plus"></i><span>Chantier</span></button>
+                    </div>
+                </div>
+
+                <div class="kanban" id="kanban"></div>
+            </div>
+        </section>
+
+        <!-- VUE : CALENDRIER / ÉCHÉANCES -->
+        <section id="view-calendar" class="view">
+            <div class="view-inner">
+                <div class="section-head">
+                    <h2 class="section-title"><i class="fa-regular fa-calendar-check"></i> Échéances</h2>
+                    <div class="seg" id="calFilter" role="tablist" aria-label="Filtrer les échéances">
+                        <button class="seg-btn is-active" data-cal="all">Toutes</button>
+                        <button class="seg-btn" data-cal="active">En cours & à venir</button>
+                    </div>
+                </div>
+                <div class="timeline" id="timeline"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ============ MODAL : CHANTIER ============ -->
+    <div class="modal-backdrop" id="chantierModal" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="chantierModalTitle">
+            <div class="modal-head">
+                <h3 id="chantierModalTitle"><i class="fa-solid fa-plus-circle"></i> Nouveau chantier</h3>
+                <button class="icon-btn" data-close="chantierModal" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="chantierForm" class="modal-body">
+                <div class="field">
+                    <label for="fNom">Nom du chantier <span class="req">*</span></label>
+                    <input type="text" id="fNom" required maxlength="120" placeholder="Ex : Refonte du site vitrine" />
+                </div>
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="fPole">Pôle <span class="req">*</span></label>
+                        <select id="fPole"></select>
+                    </div>
+                    <div class="field">
+                        <label for="fStatut">Statut</label>
+                        <select id="fStatut"></select>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="fPriorite">Priorité</label>
+                        <select id="fPriorite"></select>
+                    </div>
+                    <div class="field">
+                        <label for="fDeadline"><i class="fa-regular fa-clock"></i> Échéance</label>
+                        <input type="date" id="fDeadline" />
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="fResp"><i class="fa-regular fa-user"></i> Responsable</label>
+                        <input type="text" id="fResp" maxlength="60" placeholder="Ex : Marie D." />
+                    </div>
+                    <div class="field">
+                        <label for="fProgress">Avancement — <span id="fProgressVal">0</span>%</label>
+                        <input type="range" id="fProgress" min="0" max="100" step="5" value="0" />
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="fNotes">Notes</label>
+                    <textarea id="fNotes" rows="2" maxlength="500" placeholder="Contexte, prochaines étapes…"></textarea>
+                </div>
+                <div class="modal-foot">
+                    <button type="button" class="btn btn-danger-ghost" id="chantierDelete" hidden><i class="fa-solid fa-trash"></i> Supprimer</button>
+                    <div class="foot-right">
+                        <button type="button" class="btn btn-ghost" data-close="chantierModal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============ MODAL : PÔLE ============ -->
+    <div class="modal-backdrop" id="poleModal" hidden>
+        <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="poleModalTitle">
+            <div class="modal-head">
+                <h3 id="poleModalTitle"><i class="fa-solid fa-folder-plus"></i> Configurer un pôle</h3>
+                <button class="icon-btn" data-close="poleModal" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="poleForm" class="modal-body">
+                <div class="field">
+                    <label for="fPoleName">Nom du pôle <span class="req">*</span></label>
+                    <input type="text" id="fPoleName" required maxlength="60" placeholder="Ex : R&D, Marketing…" />
+                </div>
+                <div class="field">
+                    <label>Couleur</label>
+                    <div class="theme-picker" id="themePicker"></div>
+                </div>
+                <div class="field">
+                    <label>Icône <span class="preview-icon" id="poleIconPreview"></span></label>
+                    <div class="icon-picker" id="iconPicker"></div>
+                    <div class="icon-custom">
+                        <span class="icon-custom-prefix">fa-</span>
+                        <input type="text" id="fPoleIcon" placeholder="rocket, code, chart-pie…" autocomplete="off" />
+                    </div>
+                </div>
+                <div class="modal-foot">
+                    <button type="button" class="btn btn-danger-ghost" id="poleDelete" hidden><i class="fa-solid fa-trash"></i> Supprimer</button>
+                    <div class="foot-right">
+                        <button type="button" class="btn btn-ghost" data-close="poleModal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============ MODAL : RÉGLAGES ============ -->
+    <div class="modal-backdrop" id="settingsModal" hidden>
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+            <div class="modal-head">
+                <h3 id="settingsModalTitle"><i class="fa-solid fa-gear"></i> Réglages</h3>
+                <button class="icon-btn" data-close="settingsModal" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <!-- Statut de sauvegarde -->
+                <div class="settings-block">
+                    <div class="settings-block-head">
+                        <h4><i class="fa-solid fa-database"></i> Sauvegarde</h4>
+                        <span class="tag" id="storageMode">Local</span>
+                    </div>
+                    <p class="muted small" id="storageDesc">
+                        Les données sont enregistrées dans ce navigateur. Connectez Firebase pour synchroniser vos chantiers entre vos appareils et votre équipe.
+                    </p>
+                </div>
+
+                <!-- Firebase -->
+                <div class="settings-block">
+                    <div class="settings-block-head">
+                        <h4><i class="fa-solid fa-cloud"></i> Cloud Firebase (optionnel)</h4>
+                    </div>
+                    <div class="field">
+                        <label for="fbConfig">Configuration Firebase</label>
+                        <textarea id="fbConfig" rows="7" spellcheck="false" placeholder="Collez ici l'objet firebaseConfig depuis la console Firebase :&#10;{&#10;  apiKey: &quot;…&quot;,&#10;  authDomain: &quot;…&quot;,&#10;  projectId: &quot;…&quot;,&#10;  …&#10;}"></textarea>
+                    </div>
+                    <div class="field">
+                        <label for="fbWorkspace">Identifiant d'espace de travail</label>
+                        <input type="text" id="fbWorkspace" placeholder="default" autocomplete="off" />
+                        <p class="muted small">Toutes les personnes utilisant le même identifiant partagent les mêmes chantiers.</p>
+                    </div>
+                    <div class="settings-actions">
+                        <button class="btn btn-primary" id="fbConnect"><i class="fa-solid fa-plug"></i> Connecter</button>
+                        <button class="btn btn-danger-ghost" id="fbDisconnect" hidden><i class="fa-solid fa-plug-circle-xmark"></i> Déconnecter</button>
+                    </div>
+                    <p class="muted small" id="fbHint"></p>
+                </div>
+
+                <!-- Données -->
+                <div class="settings-block">
+                    <div class="settings-block-head">
+                        <h4><i class="fa-solid fa-file-arrow-down"></i> Données</h4>
+                    </div>
+                    <div class="settings-actions">
+                        <button class="btn btn-ghost" id="exportBtn"><i class="fa-solid fa-download"></i> Exporter (JSON)</button>
+                        <button class="btn btn-ghost" id="importBtn"><i class="fa-solid fa-upload"></i> Importer</button>
+                        <input type="file" id="importFile" accept="application/json,.json" hidden />
+                        <button class="btn btn-danger-ghost" id="resetBtn"><i class="fa-solid fa-arrow-rotate-left"></i> Réinitialiser</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ CONFIRM ============ -->
+    <div class="modal-backdrop" id="confirmModal" hidden>
+        <div class="modal modal-xs" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+            <div class="modal-body">
+                <h3 id="confirmTitle" class="confirm-title">Confirmer ?</h3>
+                <p id="confirmText" class="muted"></p>
+                <div class="modal-foot">
+                    <div class="foot-right">
+                        <button type="button" class="btn btn-ghost" id="confirmCancel">Annuler</button>
+                        <button type="button" class="btn btn-danger" id="confirmOk">Confirmer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ TOASTS ============ -->
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+    <!-- ============ SCRIPTS (classiques, sans build) ============ -->
+    <script defer src="src/js/constants.js"></script>
+    <script defer src="src/js/store.js"></script>
+    <script defer src="src/js/persistence.js"></script>
+    <script defer src="src/js/ui.js"></script>
+    <script defer src="src/js/views.js"></script>
+    <script defer src="src/js/app.js"></script>
+</body>
+</html>

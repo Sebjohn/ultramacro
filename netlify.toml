@@ -1,0 +1,26 @@
+# Ultra Macro — configuration Netlify
+# Site statique : aucune étape de build.
+
+[build]
+  publish = "."
+  command = ""
+
+# Cache long pour les ressources statiques (src/**), révision par nom de fichier.
+[[headers]]
+  for = "/src/*"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"
+
+# En-têtes de sécurité de base.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Filet de sécurité : toute route inconnue retombe sur l'app.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

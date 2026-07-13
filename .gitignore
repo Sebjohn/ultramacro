@@ -1,0 +1,20 @@
+# OS / éditeurs
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Firebase (cache & debug locaux)
+.firebase/
+firebase-debug.log
+firestore-debug.log
+
+# Éventuelle migration future (build)
+node_modules/
+dist/
+.env
+.env.local
