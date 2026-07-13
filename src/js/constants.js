@@ -27,20 +27,21 @@ window.Ultra = window.Ultra || {};
     U.DEFAULT_PRIORITY = "moyenne";
 
     /* --- Thèmes couleur des pôles (valeurs hex directes) --- */
+    // Palette désaturée et harmonieuse (chaude), lisible sur crème et sur brun-noir.
     U.THEMES = {
-        zinc:    "#a1a1aa",
-        slate:   "#94a3b8",
-        blue:    "#3b82f6",
-        cyan:    "#06b6d4",
-        teal:    "#14b8a6",
-        emerald: "#10b981",
-        violet:  "#8b5cf6",
-        indigo:  "#6366f1",
-        pink:    "#ec4899",
-        rose:    "#f43f5e",
-        red:     "#ef4444",
-        orange:  "#f97316",
-        amber:   "#f59e0b"
+        zinc:    "#8b8781",
+        slate:   "#7a8493",
+        blue:    "#5b83ac",
+        cyan:    "#4f92a1",
+        teal:    "#4f9789",
+        emerald: "#5f9b6e",
+        violet:  "#8a7aa6",
+        indigo:  "#6d74a8",
+        pink:    "#bd748c",
+        rose:    "#c06d74",
+        red:     "#c4553f",
+        orange:  "#d98a44",
+        amber:   "#c39a4a"
     };
     U.THEME_ORDER = ["indigo", "blue", "cyan", "teal", "emerald", "amber", "orange", "rose", "pink", "violet", "red", "slate", "zinc"];
 
