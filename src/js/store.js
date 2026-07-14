@@ -143,12 +143,9 @@
 
     store.saveChantier = function (input) {
         var existing = input.id ? store.chantier(input.id) : null;
+        // Le responsable par défaut du pôle est pré-rempli par le formulaire (ui.openChantier),
+        // donc surchargeable : si l'utilisateur choisit « Non assigné », on le respecte.
         var responsable = (input.responsable || "").trim() || null;
-        // Nouveau chantier sans responsable → hérite de l'assigné par défaut du pôle.
-        if (!responsable && !existing) {
-            var pl = store.pole(input.pole);
-            if (pl && pl.defaultResponsable) responsable = pl.defaultResponsable;
-        }
         var chantier = {
             id: input.id || U.uid(),
             nom: (input.nom || "").trim(),

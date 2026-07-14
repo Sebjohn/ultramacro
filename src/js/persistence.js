@@ -58,13 +58,16 @@
     /* ------------------------------------------------------------------ */
     /*  Normalisation / migration                                         */
     /* ------------------------------------------------------------------ */
+    // Les clés servent de chemins Realtime Database : on retire les caractères interdits (. # $ [ ] /).
+    function sanitizeKey(k) { return String(k).replace(/[.#$\[\]\/]/g, "_"); }
+
     function normChantier(c, i) {
-        var id = String(c.id != null ? c.id : U.uid());
+        var id = sanitizeKey(c.id != null ? c.id : U.uid());
         var now = new Date().toISOString();
         return {
             id: id,
             nom: (c.nom || c.name || "Sans nom").toString(),
-            pole: c.pole || null,
+            pole: c.pole ? sanitizeKey(c.pole) : null,
             statut: U.STATUSES[c.statut] ? c.statut : "prevu",
             priorite: U.PRIORITIES[c.priorite] ? c.priorite : U.DEFAULT_PRIORITY,
             responsable: c.responsable || null,
@@ -84,7 +87,7 @@
         var poles = raw.poles || {};
         Object.keys(poles).forEach(function (k, i) {
             var p = poles[k] || {};
-            var id = p.id || k;
+            var id = sanitizeKey(p.id || k);
             out.poles[id] = {
                 id: id,
                 name: p.name || k,
@@ -302,11 +305,19 @@
             dbUrl = (dbUrl || "").trim();
             if (!/^https?:\/\/[^\s]+/.test(dbUrl)) return Promise.reject(new Error("URL invalide (https://…firebasedatabase.app)"));
             var ws = (workspaceId || "default").trim() || "default";
-            localStorage.setItem(LS.DBURL, dbUrl);
-            localStorage.setItem(LS.WS, ws);
-            if (active) active.stop();
-            active = new RealtimeRepo(dbUrl, ws);
-            return active.start();
+            var prev = active;
+            var repo = new RealtimeRepo(dbUrl, ws);
+            // On ne bascule (et on ne mémorise l'URL) qu'en cas de succès :
+            // en cas d'échec, l'ancien repo reste actif et l'URL n'est pas enregistrée.
+            return repo.start().then(function () {
+                active = repo;
+                if (prev && prev !== repo) { try { prev.stop(); } catch (e) {} }
+                localStorage.setItem(LS.DBURL, dbUrl);
+                localStorage.setItem(LS.WS, ws);
+            }).catch(function (err) {
+                try { repo.stop(); } catch (e) {}
+                throw err;
+            });
         },
 
         // Retour au mode local : on conserve un instantané des données courantes.

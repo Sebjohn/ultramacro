@@ -20,7 +20,7 @@ responsables, Kanban et calendrier. Interface « executive » sombre, sans étap
 - **Recherche** globale et tris (ordre défini / urgence / charge).
 - **Thème clair & sombre** (identité Ultra) avec bascule mémorisée, suit la préférence système par défaut.
 - **Assigné par défaut** par pôle (pré-remplit le responsable des nouveaux chantiers).
-- **Sauvegarde fiable** — local par défaut, **Firebase Firestore** en option (temps réel +
+- **Sauvegarde fiable** — local par défaut, **Firebase Realtime Database** (temps réel +
   hors-ligne), export / import JSON.
 
 ---
@@ -36,7 +36,7 @@ index.html                → structure + points de montage
 src/styles/app.css         → design system (thème sombre)
 src/js/constants.js        → constantes (statuts, priorités, thèmes) + helpers
 src/js/store.js            → état en mémoire, sélecteurs, mutations
-src/js/persistence.js      → couche de sauvegarde (local ⇄ Firestore)
+src/js/persistence.js      → couche de sauvegarde (local ⇄ Realtime Database)
 src/js/ui.js               → toasts, modales, formulaires, réglages
 src/js/views.js            → rendu Dashboard / Kanban / Calendrier
 src/js/app.js              → navigation + démarrage
@@ -47,7 +47,7 @@ src/js/app.js              → navigation + démarrage
 Pour garantir **zéro bug de sauvegarde** et une prise en main immédiate :
 - la logique de persistance est **testable et vérifiable** directement dans le navigateur ;
 - écritures **par entité** (chaque chantier / pôle est un document) → jamais d'écrasement global ;
-- Firestore fournit la **synchro temps réel** et la **persistance hors-ligne** ;
+- la Realtime Database fournit la **synchro temps réel** et la **file d'attente hors-ligne** ;
 - repli **localStorage transparent** si Firebase n'est pas configuré.
 
 Migration ultérieure possible vers Vite/React sans changer le modèle de données.
@@ -120,13 +120,12 @@ Alternative sans GitHub : glisser-déposer le dossier sur Netlify Drop
 
 ---
 
-## 🐙 Mettre le projet sur GitHub
+## 🐙 GitHub
 
-Le dépôt est déjà initialisé avec un premier commit. Pour le publier :
+Dépôt : <https://github.com/Sebjohn/ultramacro>
 
 ```bash
-# Créer un dépôt vide sur github.com, puis :
-git remote add origin https://github.com/<votre-compte>/ultra-macro.git
+git remote add origin https://github.com/Sebjohn/ultramacro.git
 git branch -M main
 git push -u origin main
 ```
