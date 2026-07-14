@@ -251,7 +251,24 @@
     };
 
     /* ===================== RÉGLAGES ===================== */
+    // Liste des assignés (avec nb de chantiers + suppression)
+    function renderAssignees() {
+        var names = U.store.responsables();
+        var el = $("assigneesList");
+        if (!names.length) { el.innerHTML = '<p class="muted small">Aucun assigné pour le moment.</p>'; return; }
+        var chantiers = U.store.chantiersArray();
+        el.innerHTML = names.map(function (n) {
+            var count = chantiers.filter(function (c) { return c.responsable === n; }).length;
+            return '<div class="assignee-row">' +
+                '<span class="assignee-name">' + U.escape(n) + "</span>" +
+                '<span class="assignee-count">' + count + " chantier" + (count > 1 ? "s" : "") + "</span>" +
+                '<button class="icon-btn assignee-del" data-name="' + U.escape(n) + '" title="Retirer"><i class="fa-solid fa-trash"></i></button>' +
+                "</div>";
+        }).join("");
+    }
+
     ui.openSettings = function () {
+        renderAssignees();
         $("fbDbUrl").value = U.persistence.getDbUrl() || U.persistence.suggestedUrl;
         $("fbWorkspace").value = U.persistence.getWorkspace();
         var cloud = U.persistence.mode === "cloud";
@@ -265,6 +282,20 @@
     };
 
     function wireSettings() {
+        $("assigneesList").addEventListener("click", function (e) {
+            var b = e.target.closest(".assignee-del"); if (!b) return;
+            var name = b.dataset.name;
+            var count = U.store.chantiersArray().filter(function (c) { return c.responsable === name; }).length;
+            var msg = count
+                ? ("« " + name + " » sera désassigné de " + count + " chantier(s). Continuer ?")
+                : ("Retirer « " + name + " » de la liste des assignés ?");
+            ui.confirm(msg, { title: "Retirer un assigné", okLabel: "Retirer" }).then(function (ok) {
+                if (!ok) return;
+                var n = U.store.removeResponsable(name);
+                renderAssignees();
+                ui.toast("« " + name + " » retiré" + (n ? " (" + n + " chantier(s) désassigné(s))" : ""), "info");
+            });
+        });
         $("fbConnect").onclick = function () {
             var btn = this; btn.disabled = true;
             $("fbHint").textContent = "Connexion en cours…";

@@ -68,6 +68,26 @@
         return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, "fr"); });
     };
 
+    // Retire un responsable partout (désassigne ses chantiers, efface les défauts de pôle).
+    // Renvoie le nombre de chantiers désassignés.
+    store.removeResponsable = function (name) {
+        if (!name) return 0;
+        var count = 0;
+        var now = new Date().toISOString();
+        store.chantiersArray().forEach(function (c) {
+            if (c.responsable === name) {
+                U.active.upsertChantier(Object.assign({}, c, { responsable: null, updatedAt: now }));
+                count++;
+            }
+        });
+        store.polesArray().forEach(function (p) {
+            if (p.defaultResponsable === name) {
+                U.active.upsertPole(Object.assign({}, p, { defaultResponsable: null }));
+            }
+        });
+        return count;
+    };
+
     // Plus petit = plus urgent (retards en premier, puis proche, sinon grand nombre).
     store.poleUrgency = function (poleId) {
         var active = store.chantiersOfPole(poleId).filter(function (c) { return c.statut !== "termine" && c.deadline; });
