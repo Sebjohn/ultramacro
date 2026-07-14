@@ -14,8 +14,9 @@
     "use strict";
 
     var FB_VERSION = "10.12.5";
-    // URL Realtime Database par défaut : l'app déployée s'y connecte automatiquement.
-    var DEFAULT_DB_URL = "https://ultra-macro-default-rtdb.europe-west1.firebasedatabase.app/";
+    // URL suggérée, PRÉ-REMPLIE dans les réglages. Pas d'auto-connexion : le cloud est opt-in
+    // (on se connecte explicitement) pour éviter toute confusion ou écrasement de données.
+    var SUGGESTED_DB_URL = "https://ultra-macro-default-rtdb.europe-west1.firebasedatabase.app/";
     var LS = {
         DATA: "ultra_macro_data_v3",
         DBURL: "ultra_macro_db_url",
@@ -244,11 +245,14 @@
             var val = snap.val() || {};
             var empty = !val.poles && !val.chantiers;
             if (empty) {
+                // Cloud vide : on téléverse les données locales existantes (migration voulue),
+                // mais jamais de données de démo synthétiques (évite de polluer un cloud partagé).
                 var local = normalize(safeParse(localStorage.getItem(LS.DATA), {}));
                 var hasLocal = Object.keys(local.poles).length || Object.keys(local.chantiers).length;
-                var initial = hasLocal ? local : seed();
-                return self.base.set({ poles: initial.poles, chantiers: initial.chantiers })
-                    .then(function () { self._listen(); });
+                if (hasLocal) {
+                    return self.base.set({ poles: local.poles, chantiers: local.chantiers })
+                        .then(function () { self._listen(); });
+                }
             }
             self._listen();
         });
@@ -279,13 +283,12 @@
     var persistence = {
         get mode() { return active ? active.mode : "local"; },
         getWorkspace: function () { return localStorage.getItem(LS.WS) || "default"; },
-        // URL sauvegardée si présente, sinon URL par défaut (auto-connexion au 1er lancement).
-        getDbUrl: function () {
-            var u = localStorage.getItem(LS.DBURL);
-            return (u === null) ? DEFAULT_DB_URL : u;
-        },
+        // URL cloud réellement configurée (vide = mode local, pas d'auto-connexion).
+        getDbUrl: function () { return localStorage.getItem(LS.DBURL) || ""; },
+        // URL à pré-remplir dans les réglages pour faciliter la connexion.
+        suggestedUrl: SUGGESTED_DB_URL,
 
-        // Démarrage : cloud si une URL est disponible, sinon local (avec repli en cas d'échec).
+        // Démarrage : cloud seulement si l'utilisateur a déjà connecté une URL, sinon local.
         init: function () {
             var url = this.getDbUrl();
             if (url) {

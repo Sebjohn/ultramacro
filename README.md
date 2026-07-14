@@ -72,15 +72,15 @@ Migration ultérieure possible vers Vite/React sans changer le modèle de donné
 
 ## ☁️ Synchronisation temps réel — Firebase Realtime Database
 
-L'app se connecte **automatiquement** à la base configurée par défaut
-(`src/js/persistence.js` → `DEFAULT_DB_URL`). Données stockées sous
-`workspaces/{espace}/{poles|chantiers}`, synchronisées en temps réel entre tous les
-navigateurs utilisant la même URL + le même espace de travail. Repli automatique en
-local si la base est injoignable.
+Par défaut l'app fonctionne **en local** (aucune connexion automatique). Pour activer la
+synchro temps réel : bouton **Réglages** (⚙️) → *Base de données temps réel* → l'URL est
+**déjà pré-remplie** (`src/js/persistence.js` → `SUGGESTED_DB_URL`) → choisir l'espace de
+travail → **Connecter**. Données stockées sous `workspaces/{espace}/{poles|chantiers}`,
+synchronisées en temps réel entre tous les navigateurs connectés à la même URL + espace.
 
-Pour changer de base ou revenir en local : bouton **Réglages** (⚙️) → *Base de données
-temps réel* → coller l'URL Realtime Database + l'espace de travail → **Connecter**
-(ou **Déconnecter**).
+> Connecte-toi **depuis le navigateur qui contient déjà tes données** : au premier
+> branchement, si le cloud est vide, tes données locales y sont téléversées. Ensuite,
+> tous les autres appareils partagent ce cloud. **Déconnecter** revient en local.
 
 ### ⚠️ Règles de sécurité (indispensable)
 

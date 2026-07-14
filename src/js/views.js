@@ -90,7 +90,7 @@
             var color = U.themeColor(p.theme);
             var stats = U.store.poleStats(p.id);
             var focus = U.store.poleFocus(p.id, 8).filter(function (c) { return matches(c, q); });
-            var shown = focus.slice(0, 4);
+            var shown = focus.slice(0, 3);
 
             var focusHTML;
             if (shown.length) {
@@ -116,7 +116,7 @@
                     '<div class="pole-meta"><div class="pole-name">' + U.escape(p.name) + "</div>" +
                     '<div class="pole-sub">' + stats.total + " chantiers · " + U.store.poleActiveCount(p.id) + " actifs</div></div>" +
                 "</div>" +
-                '<div class="pole-focus-label"><i class="fa-solid fa-bolt"></i> Priorités</div>' +
+                '<div class="pole-focus-label">Priorités</div>' +
                 '<div class="pole-focus">' + focusHTML + "</div>" +
                 '<div class="pole-foot">' +
                     '<div class="pole-stats-line">' +

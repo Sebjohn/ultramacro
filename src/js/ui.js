@@ -252,7 +252,7 @@
 
     /* ===================== RÉGLAGES ===================== */
     ui.openSettings = function () {
-        $("fbDbUrl").value = U.persistence.getDbUrl();
+        $("fbDbUrl").value = U.persistence.getDbUrl() || U.persistence.suggestedUrl;
         $("fbWorkspace").value = U.persistence.getWorkspace();
         var cloud = U.persistence.mode === "cloud";
         $("fbConnect").innerHTML = cloud ? '<i class="fa-solid fa-rotate"></i> Reconnecter' : '<i class="fa-solid fa-plug"></i> Connecter';
