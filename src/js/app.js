@@ -127,6 +127,14 @@
 
         // Active le repository (cloud si configuré, sinon local).
         U.persistence.init();
+
+        // Avertissement : en mode fichier (file://), certains navigateurs n'enregistrent pas
+        // durablement le stockage local → risque de perte. On invite à exporter / utiliser le cloud.
+        if (location.protocol === "file:") {
+            setTimeout(function () {
+                U.ui.toast("Mode fichier local : la sauvegarde peut être effacée par le navigateur. Exportez régulièrement (Réglages) ou connectez le cloud / utilisez la version en ligne.", "error");
+            }, 1400);
+        }
     }
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
