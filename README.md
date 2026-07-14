@@ -82,24 +82,33 @@ synchronisées en temps réel entre tous les navigateurs connectés à la même 
 > branchement, si le cloud est vide, tes données locales y sont téléversées. Ensuite,
 > tous les autres appareils partagent ce cloud. **Déconnecter** revient en local.
 
-### ⚠️ Règles de sécurité (indispensable)
+### ⚠️ Règles à publier (indispensable)
 
-Une base Firebase est **verrouillée par défaut** : tant que les règles ne sont pas
-publiées, l'app affiche `permission_denied` et retombe en mode local.
+Une base Firebase est **verrouillée par défaut** → tant que les règles ne sont pas
+publiées, l'app affiche `permission_denied` et reste en local.
 
-Le fichier [`database.rules.json`](database.rules.json) ouvre l'accès à `workspaces/**`.
-Déploiement :
+**Règles ouvertes (accès partout)** — contenu de [`database.rules.json`](database.rules.json) :
+
+```json
+{ "rules": { ".read": true, ".write": true } }
+```
+
+**Le plus simple (console web, sans CLI) :**
+1. <https://console.firebase.google.com> → ton projet → **Realtime Database** → onglet **Règles**.
+2. Colle les règles ci-dessus → **Publier**.
+
+**Ou en ligne de commande :**
 
 ```bash
 npm i -g firebase-tools
 firebase login
-firebase use <votre-projet>
+firebase use <ton-projet>
 firebase deploy --only database
 ```
 
-> Ces règles sont **ouvertes** (lecture/écriture publiques) : convient à un outil interne
-> si l'URL reste privée. Pour un accès réellement protégé, ajoutez **Firebase Auth** et
-> remplacez `".read"/".write": true` par `"auth != null"`.
+> Ces règles sont **totalement ouvertes** (lecture/écriture publiques). Adapté à un outil
+> interne tant que l'URL de la base reste privée. Pour verrouiller plus tard : ajoute
+> **Firebase Auth** et remplace par `".read"/".write": "auth != null"`.
 
 ---
 

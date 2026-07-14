@@ -26,34 +26,11 @@
     };
 
     /* ------------------------------------------------------------------ */
-    /*  Données par défaut (premier lancement)                            */
+    /*  Aucune donnée par défaut : on démarre TOUJOURS vide.              */
+    /*  (Garantit qu'aucune donnée de démo ne peut écraser les vôtres.)   */
     /* ------------------------------------------------------------------ */
     function seed() {
-        var t = new Date();
-        function rel(days) { var d = new Date(t); d.setDate(d.getDate() + days); return U.toInputDate(d); }
-        var poles = {
-            direction:  { id: "direction",  name: "Direction & Stratégie", icon: "chess-knight", theme: "indigo",  order: 0, defaultResponsable: "Sébastien" },
-            rd:         { id: "rd",          name: "R&D & Tech",            icon: "code",         theme: "blue",    order: 1, defaultResponsable: "Luc M." },
-            marketing:  { id: "marketing",   name: "Marketing & Growth",    icon: "bullseye",     theme: "pink",    order: 2, defaultResponsable: "Julie R." },
-            sales:      { id: "sales",       name: "Commercial & Ventes",   icon: "chart-pie",    theme: "emerald", order: 3, defaultResponsable: "Marc" },
-            operations: { id: "operations",  name: "Opérations & Supply",   icon: "cube",         theme: "amber",   order: 4, defaultResponsable: "Nadia" },
-            rh:         { id: "rh",          name: "Ressources Humaines",   icon: "users",        theme: "cyan",    order: 5, defaultResponsable: "People" }
-        };
-        var raw = [
-            { nom: "Alignement Vision 2030",      pole: "direction",  statut: "encours", priorite: "haute",   responsable: "Sébastien",  deadline: rel(9),   progression: 40 },
-            { nom: "Levée de fonds série A",      pole: "direction",  statut: "prevu",   priorite: "haute",   responsable: "CFO",        deadline: rel(28),  progression: 0 },
-            { nom: "Architecture Core API v3",    pole: "rd",         statut: "encours", priorite: "haute",   responsable: "Luc M.",     deadline: rel(-2),  progression: 65 },
-            { nom: "Migration CI/CD",             pole: "rd",         statut: "prevu",   priorite: "moyenne", responsable: "Ops Team",   deadline: rel(14),  progression: 0 },
-            { nom: "Refonte du site vitrine",     pole: "marketing",  statut: "termine", priorite: "moyenne", responsable: "Design",     deadline: rel(-20), progression: 100 },
-            { nom: "Campagne acquisition Q3",     pole: "marketing",  statut: "encours", priorite: "moyenne", responsable: "Julie R.",   deadline: rel(3),   progression: 30 },
-            { nom: "Lancement marché DACH",       pole: "sales",      statut: "encours", priorite: "haute",   responsable: "Marc",       deadline: rel(1),   progression: 55 },
-            { nom: "Playbook de vente",           pole: "sales",      statut: "prevu",   priorite: "basse",   responsable: null,         deadline: null,     progression: 0 },
-            { nom: "Optimisation logistique",     pole: "operations", statut: "encours", priorite: "moyenne", responsable: "Nadia",      deadline: rel(6),   progression: 45 },
-            { nom: "Plan de recrutement H2",      pole: "rh",         statut: "prevu",   priorite: "moyenne", responsable: "People",     deadline: rel(18),  progression: 0 }
-        ];
-        var chantiers = {};
-        raw.forEach(function (c, i) { c.order = i; var id = U.uid(); chantiers[id] = normChantier(Object.assign({ id: id }, c), i); });
-        return { poles: poles, chantiers: chantiers };
+        return { poles: {}, chantiers: {} };
     }
 
     /* ------------------------------------------------------------------ */
@@ -340,7 +317,6 @@
         },
 
         replaceAll: function (data) { if (active) active.bulkReplace(data); },
-        reset: function () { this.replaceAll(seed()); },
         currentSnapshot: function () { return active ? active.snapshot() : { poles: {}, chantiers: {} }; }
     };
 

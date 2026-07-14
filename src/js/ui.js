@@ -340,10 +340,6 @@
             };
             reader.readAsText(file);
         };
-        $("resetBtn").onclick = function () {
-            ui.confirm("Réinitialiser avec les données de démonstration ? Vos chantiers actuels seront perdus.", { title: "Réinitialiser", okLabel: "Réinitialiser" })
-                .then(function (ok) { if (ok) { U.persistence.reset(); ui.toast("Données réinitialisées", "info"); } });
-        };
     }
 
     /* ===================== INIT UI ===================== */
