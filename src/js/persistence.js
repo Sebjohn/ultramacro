@@ -291,8 +291,10 @@
             if (url) {
                 active = new RealtimeRepo(url, this.getWorkspace());
                 return active.start().catch(function (e) {
-                    console.error("Realtime DB KO, repli local :", e);
-                    U.ui && U.ui.toast("Connexion à la base impossible — mode local", "error");
+                    var msg = (e && e.message) || "";
+                    console.warn("Realtime DB indisponible, mode local :", msg);
+                    var denied = /permission_denied/i.test(msg);
+                    U.ui && U.ui.toast(denied ? "Base non autorisée — déployez les règles (mode local)" : "Base injoignable — mode local", "error");
                     active = new LocalRepo(); active.start();
                 });
             }

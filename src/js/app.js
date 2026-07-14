@@ -29,12 +29,13 @@
         $(TARGETS[view] || "view-dashboard").classList.add("is-active");
 
         // Onglets : "Vue d'ensemble" reste actif quand on descend dans un pôle.
-        document.querySelectorAll(".main-nav .nav-pill").forEach(function (b) {
+        document.querySelectorAll(".main-nav .nav-pill, .mobile-tabbar .tab[data-nav]").forEach(function (b) {
             var isActive = b.dataset.nav === view
                 || (b.dataset.nav === "dashboard" && view === "pole");
             b.classList.toggle("is-active", isActive);
         });
 
+        document.body.classList.remove("search-active"); // referme la recherche mobile
         U.views.render();
         $("appMain").scrollTop = 0;
     };
@@ -73,6 +74,10 @@
                 else if (a === "new-pole") U.ui.openPole();
                 else if (a === "open-settings") U.ui.openSettings();
                 else if (a === "toggle-theme") toggleTheme();
+                else if (a === "toggle-search") {
+                    var open = document.body.classList.toggle("search-active");
+                    if (open) setTimeout(function () { $("globalSearch").focus(); }, 60);
+                }
             });
         });
 
@@ -100,7 +105,8 @@
         // Raccourcis clavier
         document.addEventListener("keydown", function (e) {
             var typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
-            if (e.key === "/" && !typing) { e.preventDefault(); search.focus(); }
+            if (e.key === "Escape" && document.body.classList.contains("search-active")) { document.body.classList.remove("search-active"); return; }
+            if (e.key === "/" && !typing) { e.preventDefault(); document.body.classList.add("search-active"); search.focus(); }
             else if ((e.key === "n" || e.key === "N") && !typing && !e.ctrlKey && !e.metaKey) {
                 var open = document.querySelector(".modal-backdrop:not([hidden])");
                 if (!open) { e.preventDefault(); U.ui.openChantier(); }

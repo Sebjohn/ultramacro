@@ -227,7 +227,8 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 .section-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 30px 0 16px; flex-wrap: wrap; }
 .section-title { font-size: 15px; display: flex; align-items: center; gap: 10px; letter-spacing: -0.01em; }
 .section-title i { color: var(--brand); }
-.section-tools { display: flex; align-items: center; gap: 10px; }
+.section-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.seg { flex-wrap: wrap; }
 .section-hint { margin: 0 0 0 auto; }
 
 .seg { display: flex; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
@@ -484,6 +485,28 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
     *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
 }
 
+/* ===================== MOBILE (barre d'onglets bas) ===================== */
+.only-mobile { display: none; }
+.mobile-tabbar { display: none; }
+.mobile-tabbar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 45;
+    grid-template-columns: repeat(4, 1fr);
+    background: color-mix(in srgb, var(--bg) 90%, transparent);
+    backdrop-filter: blur(14px);
+    border-top: 1px solid var(--border);
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+}
+.mobile-tabbar .tab {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    border: none; background: transparent; color: var(--faint);
+    font: inherit; font-size: 10px; font-weight: 600; padding: 7px 4px; border-radius: 10px;
+    cursor: pointer; min-height: 46px; transition: color .15s, background .15s;
+}
+.mobile-tabbar .tab i { font-size: 17px; }
+.mobile-tabbar .tab.is-active { color: var(--brand); }
+.mobile-tabbar .tab.tab-cta { color: var(--brand); }
+.mobile-tabbar .tab:active { background: var(--surface-2); }
+
 /* ===================== RESPONSIVE ===================== */
 /* En-tête : on condense progressivement pour qu'aucun bouton ne soit coupé. */
 @media (max-width: 1200px) {
@@ -501,11 +524,40 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
     .section-hint { display: none; }
 }
 @media (max-width: 640px) {
+    /* En-tête compact : la navigation passe dans la barre du bas */
+    .main-nav { display: none; }
+    .only-mobile { display: grid; }
+    .sync-chip { display: none; }
     .brand-name { display: none; }
-    .view-inner { padding: 18px 15px 48px; }
-    .header-actions { gap: 8px; }
+    .app-header { gap: 12px; padding: 0 14px; }
+    .header-actions { gap: 6px; }
+    .header-actions .btn-primary { display: none; }   /* remplacé par l'onglet « Chantier » */
+
+    /* Recherche : superposition plein-largeur ouverte via l'icône loupe */
+    .search-box {
+        position: fixed; top: var(--header-h); left: 0; right: 0; width: auto;
+        z-index: 44; border-radius: 0; border-left: 0; border-right: 0;
+        padding: 10px 14px; display: none; background: var(--surface); box-shadow: var(--shadow);
+    }
+    body.search-active .search-box { display: flex; }
+    .search-box input, .search-box:focus-within input { width: 100%; }
+
+    /* Barre d'onglets + espace de contenu au-dessus */
+    .mobile-tabbar { display: grid; }
+    .view-inner { padding: 16px 14px calc(88px + env(safe-area-inset-bottom, 0px)); }
+    .section-head { margin: 22px 0 14px; }
     .grid-2 { grid-template-columns: 1fr; }
+
+    /* Actions de carte toujours visibles (pas de survol au tactile) */
+    .cc-actions { opacity: 1; }
+
+    /* Modales en feuille : collées en bas, plus larges */
+    .modal-backdrop { align-items: flex-end; padding: 0; }
+    .modal { max-width: 100%; border-radius: 18px 18px 0 0; max-height: 92vh; }
+    .modal-backdrop.is-open .modal { transform: none; }
+    .modal { transform: translateY(12px); }
 }
-@media (max-width: 480px) {
-    .search-box { display: none; }
+@media (max-width: 380px) {
+    .mobile-tabbar .tab span { font-size: 9px; }
+    .kpi-value { font-size: 30px; }
 }

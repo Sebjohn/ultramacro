@@ -61,6 +61,9 @@
                 <span class="sync-dot"></span>
                 <span class="sync-label" id="syncLabel">Local</span>
             </button>
+            <button class="icon-btn only-mobile" data-action="toggle-search" title="Rechercher" aria-label="Rechercher">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
             <button class="icon-btn" data-action="toggle-theme" id="themeToggle" title="Basculer le thème" aria-label="Basculer clair / sombre">
                 <i class="fa-solid fa-moon"></i>
             </button>
@@ -150,6 +153,14 @@
             </div>
         </section>
     </main>
+
+    <!-- BARRE D'ONGLETS MOBILE -->
+    <nav class="mobile-tabbar" aria-label="Navigation">
+        <button class="tab is-active" data-nav="dashboard"><i class="fa-solid fa-grip"></i><span>Vue</span></button>
+        <button class="tab" data-nav="kanban"><i class="fa-solid fa-table-columns"></i><span>Kanban</span></button>
+        <button class="tab" data-nav="calendar"><i class="fa-regular fa-calendar"></i><span>Agenda</span></button>
+        <button class="tab tab-cta" data-action="new-chantier"><i class="fa-solid fa-circle-plus"></i><span>Chantier</span></button>
+    </nav>
 
     <!-- ============ MODAL : CHANTIER ============ -->
     <div class="modal-backdrop" id="chantierModal" hidden>
