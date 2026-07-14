@@ -125,16 +125,17 @@
         // Re-rendu à chaque changement de données (local ou temps réel Realtime Database).
         U.store.subscribe(function () { U.views.render(); });
 
-        // Active le repository (cloud si configuré, sinon local).
-        U.persistence.init();
-
-        // Avertissement : en mode fichier (file://), certains navigateurs n'enregistrent pas
-        // durablement le stockage local → risque de perte. On invite à exporter / utiliser le cloud.
-        if (location.protocol === "file:") {
-            setTimeout(function () {
-                U.ui.toast("Mode fichier local : la sauvegarde peut être effacée par le navigateur. Exportez régulièrement (Réglages) ou connectez le cloud / utilisez la version en ligne.", "error");
-            }, 1400);
-        }
+        // Connexion automatique à la base (cloud) ; repli local si injoignable.
+        U.persistence.init().then(function () {
+            // Avertissement seulement si on est resté en LOCAL et en mode fichier (file://),
+            // car là le navigateur peut ne pas conserver le stockage local. Si le cloud a pris
+            // le relais, les données sont persistantes → pas d'avertissement.
+            if (location.protocol === "file:" && U.persistence.mode === "local") {
+                setTimeout(function () {
+                    U.ui.toast("Mode fichier local sans cloud : la sauvegarde peut être effacée. Publiez les règles Firebase (connexion auto) ou exportez régulièrement.", "error");
+                }, 900);
+            }
+        });
     }
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

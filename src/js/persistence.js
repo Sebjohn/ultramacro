@@ -260,12 +260,17 @@
     var persistence = {
         get mode() { return active ? active.mode : "local"; },
         getWorkspace: function () { return localStorage.getItem(LS.WS) || "default"; },
-        // URL cloud réellement configurée (vide = mode local, pas d'auto-connexion).
-        getDbUrl: function () { return localStorage.getItem(LS.DBURL) || ""; },
-        // URL à pré-remplir dans les réglages pour faciliter la connexion.
+        // URL cloud effective : jamais configurée (null) → URL par défaut = CONNEXION AUTOMATIQUE ;
+        // "" → l'utilisateur a explicitement choisi le mode local ; sinon → l'URL choisie.
+        getDbUrl: function () {
+            var s = localStorage.getItem(LS.DBURL);
+            return (s === null) ? SUGGESTED_DB_URL : s;
+        },
+        // URL à pré-remplir dans les réglages.
         suggestedUrl: SUGGESTED_DB_URL,
 
-        // Démarrage : cloud seulement si l'utilisateur a déjà connecté une URL, sinon local.
+        // Démarrage : connexion cloud automatique à la base par défaut (sans configuration),
+        // sauf si l'utilisateur est passé explicitement en local. Repli local si injoignable.
         init: function () {
             var url = this.getDbUrl();
             if (url) {
