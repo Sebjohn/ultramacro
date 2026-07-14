@@ -47,6 +47,9 @@
             <button class="nav-pill" data-nav="kanban">
                 <i class="fa-solid fa-table-columns"></i><span>Kanban</span>
             </button>
+            <button class="nav-pill" data-nav="mindmap">
+                <i class="fa-solid fa-sitemap"></i><span>Carte mentale</span>
+            </button>
             <button class="nav-pill" data-nav="calendar">
                 <i class="fa-regular fa-calendar"></i><span>Calendrier</span>
             </button>
@@ -136,6 +139,17 @@
                     <p class="muted small section-hint">Tous les chantiers, tous pôles confondus — glissez une carte pour changer son statut.</p>
                 </div>
                 <div class="kanban kanban-global" id="kanbanGlobal"></div>
+            </div>
+        </section>
+
+        <!-- VUE : CARTE MENTALE -->
+        <section id="view-mindmap" class="view">
+            <div class="view-inner">
+                <div class="section-head">
+                    <h2 class="section-title"><i class="fa-solid fa-sitemap"></i> Carte mentale</h2>
+                    <p class="muted small section-hint">Vue d'ensemble arborescente — clique un pôle ou un chantier.</p>
+                </div>
+                <div class="mindmap-wrap" id="mindmap"></div>
             </div>
         </section>
 

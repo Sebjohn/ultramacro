@@ -210,6 +210,19 @@
         return pole;
     };
 
+    // Réordonne les pôles : déplace draggedId juste avant targetId, puis réattribue les 'order'.
+    store.movePole = function (draggedId, targetId) {
+        if (!draggedId || draggedId === targetId) return;
+        var arr = store.polesArray("manual");
+        var from = arr.map(function (p) { return p.id; }).indexOf(draggedId);
+        var to = arr.map(function (p) { return p.id; }).indexOf(targetId);
+        if (from < 0 || to < 0) return;
+        arr.splice(to, 0, arr.splice(from, 1)[0]);
+        arr.forEach(function (p, i) {
+            if (p.order !== i) U.active.upsertPole(Object.assign({}, p, { order: i }));
+        });
+    };
+
     store.deletePole = function (id) {
         if (store.chantiersOfPole(id).length > 0) return false;
         U.active.deletePole(id);

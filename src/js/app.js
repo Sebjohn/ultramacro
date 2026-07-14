@@ -15,7 +15,7 @@
     };
 
     /* --------- Navigation --------- */
-    var TARGETS = { pole: "view-pole", kanban: "view-kanban", calendar: "view-calendar", dashboard: "view-dashboard" };
+    var TARGETS = { pole: "view-pole", kanban: "view-kanban", mindmap: "view-mindmap", calendar: "view-calendar", dashboard: "view-dashboard" };
 
     U.nav = function (view, param) {
         if (view === "pole") {

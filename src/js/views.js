@@ -82,7 +82,9 @@
     function renderPolesGrid() {
         var q = U.viewState.search;
         var poles = U.store.polesArray(U.viewState.poleSort);
+        var manual = U.viewState.poleSort === "manual"; // réordonnable seulement en « Ordre défini »
         var grid = $("polesGrid");
+        grid.classList.toggle("reorderable", manual);
         $("polesEmpty").hidden = poles.length > 0;
         grid.hidden = poles.length === 0;
 
@@ -109,11 +111,15 @@
                 focusHTML = '<div class="focus-empty"><i class="fa-solid fa-check" style="color:var(--termine)"></i> Rien en cours</div>';
             }
 
-            return '<div class="pole-card" style="--pole:' + color + '">' +
+            var owner = p.defaultResponsable
+                ? '<div class="pole-owner" title="Assigné par défaut"><i class="fa-regular fa-user"></i>' + U.escape(p.defaultResponsable) + "</div>"
+                : "";
+            return '<div class="pole-card' + (manual ? " pole-drag" : "") + '" draggable="' + (manual ? "true" : "false") + '" data-pole="' + p.id + '" style="--pole:' + color + '">' +
+                (manual ? '<span class="pole-grip" title="Glisser pour réordonner"><i class="fa-solid fa-grip-vertical"></i></span>' : "") +
                 '<button class="icon-btn pole-gear" data-act="edit-pole" data-id="' + p.id + '" title="Configurer"><i class="fa-solid fa-gear"></i></button>' +
                 '<div class="pole-top">' +
                     '<div class="pole-ico"><i class="fa-solid fa-' + U.escape(p.icon) + '"></i></div>' +
-                    '<div class="pole-meta"><div class="pole-name">' + U.escape(p.name) + "</div>" +
+                    '<div class="pole-meta"><div class="pole-name">' + U.escape(p.name) + "</div>" + owner +
                     '<div class="pole-sub">' + stats.total + " chantiers · " + U.store.poleActiveCount(p.id) + " actifs</div></div>" +
                 "</div>" +
                 '<div class="pole-focus-label">Priorités</div>' +
@@ -206,7 +212,8 @@
        ============================================================ */
     var GROUPS = [
         { key: "late",  label: "En retard",     cls: "late",  test: function (n, st) { return st !== "termine" && n < 0; } },
-        { key: "week",  label: "Cette semaine", cls: "",      test: function (n, st) { return st !== "termine" && n >= 0 && n <= 7; } },
+        { key: "today", label: "Aujourd'hui",   cls: "today", test: function (n, st) { return st !== "termine" && n === 0; } },
+        { key: "week",  label: "Cette semaine", cls: "",      test: function (n, st) { return st !== "termine" && n >= 1 && n <= 7; } },
         { key: "month", label: "Ce mois-ci",    cls: "",      test: function (n, st) { return st !== "termine" && n > 7 && n <= 31; } },
         { key: "later", label: "Plus tard",     cls: "",      test: function (n, st) { return st !== "termine" && n > 31; } },
         { key: "done",  label: "Terminés",      cls: "",      test: function (n, st) { return st === "termine"; } }
@@ -233,7 +240,8 @@
             if (!items || !items.length) return "";
             items.sort(function (a, b) { return U.daysUntil(a.deadline) - U.daysUntil(b.deadline); });
             var rows = items.map(timelineRow).join("");
-            return '<div class="tl-group ' + g.cls + '"><div class="tl-group-head"><h3>' + g.label +
+            var head = (g.key === "today" ? '<i class="fa-solid fa-calendar-day"></i> ' : "") + g.label;
+            return '<div class="tl-group ' + g.cls + '"><div class="tl-group-head"><h3>' + head +
                 '</h3><span class="cnt">' + items.length + "</span></div>" +
                 '<div class="tl-list">' + rows + "</div></div>";
         }).join("");
@@ -246,15 +254,81 @@
         var pole = U.store.pole(c.pole);
         var color = pole ? U.themeColor(pole.theme) : "var(--faint)";
         var st = S[c.statut];
-        return '<div class="tl-row" data-act="edit-chantier" data-cid="' + c.id + '">' +
+        var isToday = U.daysUntil(c.deadline) === 0 && c.statut !== "termine";
+        return '<div class="tl-row' + (isToday ? " today" : "") + '" data-act="edit-chantier" data-cid="' + c.id + '">' +
             '<div class="tl-date"><div class="d">' + d.getDate() + '</div><div class="m">' + d.toLocaleDateString("fr-FR", { month: "short" }) + "</div></div>" +
             '<div class="tl-bar" style="background:' + color + '"></div>' +
             '<div class="tl-main"><div class="tl-name">' + U.escape(c.nom) + "</div>" +
                 '<div class="tl-sub">' + (pole ? '<span class="tl-pole-tag" style="--pole:' + color + '"><i class="fa-solid fa-' + U.escape(pole.icon) + '"></i>' + U.escape(pole.name) + "</span>" : "") +
                 (c.responsable ? "<span>· " + U.escape(c.responsable) + "</span>" : "") +
                 "<span>· " + U.escape(U.relativeLabel(c.deadline)) + "</span></div></div>" +
-            '<div class="tl-right"><span class="tl-status ' + c.statut + '">' + st.label + "</span></div></div>";
+            '<div class="tl-right">' + (isToday ? '<span class="tl-today">Aujourd\'hui</span>' : "") +
+                '<span class="tl-status ' + c.statut + '">' + st.label + "</span></div></div>";
     }
+
+    /* ============================================================
+       VUE CARTE MENTALE (arbre horizontal : racine → pôles → chantiers)
+       ============================================================ */
+    function mmTrunc(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+    function mmLink(x1, y1, x2, y2, stroke) {
+        var mx = (x1 + x2) / 2;
+        return '<path d="M' + x1 + ',' + y1 + ' C' + mx + ',' + y1 + ' ' + mx + ',' + y2 + ' ' + x2 + ',' + y2 + '" fill="none" stroke="' + stroke + '" stroke-width="1.5" style="opacity:.5"/>';
+    }
+    views.renderMindmap = function () {
+        var q = U.viewState.search;
+        var poles = U.store.polesArray(U.viewState.poleSort);
+        var wrap = $("mindmap");
+        if (!poles.length) {
+            wrap.innerHTML = '<div class="empty-state"><i class="fa-solid fa-sitemap"></i><p>Aucun pôle à afficher.</p></div>';
+            return;
+        }
+        var rowH = 30, gap = 22, padY = 36;
+        var xRoot = 24, wRoot = 128, xPole = 250, wPole = 200, xCh = 500, wCh = 320, padX = 24;
+        var y = padY;
+        var layout = poles.map(function (p) {
+            var chs = U.store.sortByFocus(U.store.chantiersOfPole(p.id).filter(function (c) { return matches(c, q); }));
+            var blockH = Math.max(chs.length * rowH, 46);
+            var poleCy = y + blockH / 2;
+            var cpos = chs.map(function (c, i) { return { c: c, cy: y + i * rowH + rowH / 2 }; });
+            y += blockH + gap;
+            return { p: p, cy: poleCy, chs: cpos };
+        });
+        var totalH = Math.max(y + padY, 220);
+        var rootCy = totalH / 2;
+        var W = xCh + wCh + padX;
+        var svg = ['<svg class="mm-svg" viewBox="0 0 ' + W + ' ' + totalH + '" width="' + W + '" height="' + totalH + '" xmlns="http://www.w3.org/2000/svg">'];
+        layout.forEach(function (L) { svg.push(mmLink(xRoot + wRoot, rootCy, xPole, L.cy, "var(--border-2)")); });
+        layout.forEach(function (L) {
+            var color = U.themeColor(L.p.theme);
+            L.chs.forEach(function (cp) { svg.push(mmLink(xPole + wPole, L.cy, xCh, cp.cy, color)); });
+        });
+        // Racine
+        svg.push('<g><rect x="' + xRoot + '" y="' + (rootCy - 22) + '" rx="12" width="' + wRoot + '" height="44" style="fill:var(--brand)"/>' +
+            '<text x="' + (xRoot + wRoot / 2) + '" y="' + (rootCy + 5) + '" text-anchor="middle" style="fill:#fff;font-weight:700" font-size="14">Ultra Macro</text></g>');
+        // Pôles
+        layout.forEach(function (L) {
+            var color = U.themeColor(L.p.theme);
+            var n = U.store.chantiersOfPole(L.p.id).length;
+            svg.push('<g class="mm-node" data-act="open-pole" data-id="' + L.p.id + '">' +
+                '<rect x="' + xPole + '" y="' + (L.cy - 19) + '" rx="10" width="' + wPole + '" height="38" style="fill:var(--surface);stroke:' + color + ';stroke-width:1.5"/>' +
+                '<circle cx="' + (xPole + 17) + '" cy="' + L.cy + '" r="6" style="fill:' + color + '"/>' +
+                '<text x="' + (xPole + 32) + '" y="' + (L.cy + 4) + '" style="fill:var(--text);font-weight:600" font-size="13">' + U.escape(mmTrunc(L.p.name, 19)) + '</text>' +
+                '<text x="' + (xPole + wPole - 12) + '" y="' + (L.cy + 4) + '" text-anchor="end" style="fill:var(--faint)" font-size="11">' + n + '</text></g>');
+        });
+        // Chantiers
+        layout.forEach(function (L) {
+            L.chs.forEach(function (cp) {
+                var c = cp.c, prio = P[c.priorite] || P[U.DEFAULT_PRIORITY];
+                var op = c.statut === "termine" ? ";opacity:.55" : "";
+                svg.push('<g class="mm-node" data-act="edit-chantier" data-cid="' + c.id + '" style="' + op.slice(1) + '">' +
+                    '<rect x="' + xCh + '" y="' + (cp.cy - 12) + '" rx="7" width="' + wCh + '" height="24" style="fill:var(--surface);stroke:var(--border)"/>' +
+                    '<rect x="' + xCh + '" y="' + (cp.cy - 12) + '" rx="3" width="4" height="24" style="fill:' + prio.color + '"/>' +
+                    '<text x="' + (xCh + 13) + '" y="' + (cp.cy + 4) + '" style="fill:var(--muted)" font-size="11.5">' + U.escape(mmTrunc(c.nom, 42)) + '</text></g>');
+            });
+        });
+        svg.push("</svg>");
+        wrap.innerHTML = svg.join("");
+    };
 
     /* ============================================================
        Rendu global (appelé sur chaque changement du store)
@@ -264,6 +338,7 @@
         if (v === "dashboard") views.renderDashboard();
         else if (v === "pole") views.renderKanban();
         else if (v === "kanban") views.renderKanbanGlobal();
+        else if (v === "mindmap") views.renderMindmap();
         else if (v === "calendar") views.renderTimeline();
     };
 
@@ -320,12 +395,42 @@
         });
     }
 
+    /* --------- Réordonnancement des pôles (glisser-déposer) --------- */
+    var dragPole = null;
+    function bindPoleReorder(grid) {
+        grid.addEventListener("dragstart", function (e) {
+            var card = e.target.closest(".pole-card.pole-drag"); if (!card) return;
+            dragPole = card.dataset.pole; card.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+            try { e.dataTransfer.setData("text/plain", dragPole); } catch (err) {}
+        });
+        grid.addEventListener("dragend", function () {
+            grid.querySelectorAll(".dragging, .drop-target").forEach(function (c) { c.classList.remove("dragging", "drop-target"); });
+            dragPole = null;
+        });
+        grid.addEventListener("dragover", function (e) {
+            if (!dragPole) return;
+            var card = e.target.closest(".pole-card"); if (!card) return;
+            e.preventDefault(); e.dataTransfer.dropEffect = "move";
+            grid.querySelectorAll(".drop-target").forEach(function (c) { if (c !== card) c.classList.remove("drop-target"); });
+            if (card.dataset.pole !== dragPole) card.classList.add("drop-target");
+        });
+        grid.addEventListener("drop", function (e) {
+            var card = e.target.closest(".pole-card"); if (!card || !dragPole) return;
+            e.preventDefault();
+            var target = card.dataset.pole;
+            if (target && target !== dragPole) U.store.movePole(dragPole, target);
+            dragPole = null;
+        });
+    }
+
     views.init = function () {
-        ["polesGrid", "kanban", "kanbanGlobal", "timeline"].forEach(function (id) {
+        ["polesGrid", "kanban", "kanbanGlobal", "timeline", "mindmap"].forEach(function (id) {
             $(id).addEventListener("click", handleAction);
         });
         bindDnD($("kanban"));
         bindDnD($("kanbanGlobal"));
+        bindPoleReorder($("polesGrid"));
     };
 
     U.views = views;
