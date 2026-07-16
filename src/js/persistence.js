@@ -58,9 +58,21 @@
         };
     }
 
+    function normObjective(o, i) {
+        var id = sanitizeKey(o.id != null ? o.id : ("obj_" + U.uid()));
+        return {
+            id: id,
+            label: (o.label || "Objectif").toString(),
+            period: o.period === "week" ? "week" : "month",
+            target: Math.max(1, Math.round(Number(o.target) || 1)),
+            current: Math.max(0, Math.round(Number(o.current) || 0)),
+            order: (typeof o.order === "number") ? o.order : (i || 0)
+        };
+    }
+
     function normalize(raw) {
         raw = raw || {};
-        var out = { poles: {}, chantiers: {} };
+        var out = { poles: {}, chantiers: {}, objectives: {} };
 
         var poles = raw.poles || {};
         Object.keys(poles).forEach(function (k, i) {
@@ -79,6 +91,10 @@
         var ch = raw.chantiers || {};
         var list = Array.isArray(ch) ? ch : Object.keys(ch).map(function (k) { return ch[k]; });
         list.forEach(function (c, i) { var n = normChantier(c, i); out.chantiers[n.id] = n; });
+
+        var ob = raw.objectives || {};
+        var olist = Array.isArray(ob) ? ob : Object.keys(ob).map(function (k) { return ob[k]; });
+        olist.forEach(function (o, i) { var n = normObjective(o, i); out.objectives[n.id] = n; });
 
         return out;
     }
@@ -109,7 +125,7 @@
 
     function persistLocal(data) {
         try {
-            localStorage.setItem(LS.DATA, JSON.stringify({ poles: data.poles, chantiers: data.chantiers }));
+            localStorage.setItem(LS.DATA, JSON.stringify({ poles: data.poles, chantiers: data.chantiers, objectives: data.objectives || {} }));
             return true;
         } catch (e) {
             console.error("Écriture localStorage impossible :", e);
@@ -143,8 +159,10 @@
     LocalRepo.prototype.deletePole = function (id) { delete this.data.poles[id]; this._commit(); };
     LocalRepo.prototype.upsertChantier = function (c) { this.data.chantiers[c.id] = c; this._commit(); };
     LocalRepo.prototype.deleteChantier = function (id) { delete this.data.chantiers[id]; this._commit(); };
+    LocalRepo.prototype.upsertObjective = function (o) { this.data.objectives[o.id] = o; this._commit(); };
+    LocalRepo.prototype.deleteObjective = function (id) { delete this.data.objectives[id]; this._commit(); };
     LocalRepo.prototype.bulkReplace = function (data) { this.data = normalize(data); this._commit(); };
-    LocalRepo.prototype.snapshot = function () { return { poles: this.data.poles, chantiers: this.data.chantiers }; };
+    LocalRepo.prototype.snapshot = function () { return { poles: this.data.poles, chantiers: this.data.chantiers, objectives: this.data.objectives }; };
     LocalRepo.prototype.stop = function () {};
 
     /* ================================================================== */
@@ -177,7 +195,8 @@
         this.workspaceId = workspaceId || "default";
         this.poles = {};
         this.chantiers = {};
-        this._loaded = { poles: false, chantiers: false };
+        this.objectives = {};
+        this._loaded = { poles: false, chantiers: false, objectives: false };
         this._refs = [];
     }
 
@@ -195,8 +214,8 @@
     };
 
     RealtimeRepo.prototype._emit = function () {
-        if (!this._loaded.poles || !this._loaded.chantiers) return;
-        U.store.set({ poles: this.poles, chantiers: this.chantiers });
+        if (!this._loaded.poles || !this._loaded.chantiers || !this._loaded.objectives) return;
+        U.store.set({ poles: this.poles, chantiers: this.chantiers, objectives: this.objectives });
     };
 
     RealtimeRepo.prototype._listen = function () {
@@ -213,6 +232,7 @@
         }
         bind("poles");
         bind("chantiers");
+        bind("objectives");
     };
 
     // Premier branchement : si le workspace cloud est vide, on téléverse les données locales (ou le seed).
@@ -227,7 +247,7 @@
                 var local = normalize(safeParse(localStorage.getItem(LS.DATA), {}));
                 var hasLocal = Object.keys(local.poles).length || Object.keys(local.chantiers).length;
                 if (hasLocal) {
-                    return self.base.set({ poles: local.poles, chantiers: local.chantiers })
+                    return self.base.set({ poles: local.poles, chantiers: local.chantiers, objectives: local.objectives || {} })
                         .then(function () { self._listen(); });
                 }
             }
@@ -241,11 +261,13 @@
     RealtimeRepo.prototype.deletePole = function (id) { this.base.child("poles/" + id).remove().catch(cloudFail); };
     RealtimeRepo.prototype.upsertChantier = function (c) { setStatus("saving"); this.base.child("chantiers/" + c.id).set(c).catch(cloudFail); };
     RealtimeRepo.prototype.deleteChantier = function (id) { this.base.child("chantiers/" + id).remove().catch(cloudFail); };
+    RealtimeRepo.prototype.upsertObjective = function (o) { setStatus("saving"); this.base.child("objectives/" + o.id).set(o).catch(cloudFail); };
+    RealtimeRepo.prototype.deleteObjective = function (id) { this.base.child("objectives/" + id).remove().catch(cloudFail); };
     RealtimeRepo.prototype.bulkReplace = function (data) {
         var n = normalize(data);
-        this.base.set({ poles: n.poles, chantiers: n.chantiers }).catch(cloudFail);
+        this.base.set({ poles: n.poles, chantiers: n.chantiers, objectives: n.objectives }).catch(cloudFail);
     };
-    RealtimeRepo.prototype.snapshot = function () { return { poles: this.poles, chantiers: this.chantiers }; };
+    RealtimeRepo.prototype.snapshot = function () { return { poles: this.poles, chantiers: this.chantiers, objectives: this.objectives }; };
     RealtimeRepo.prototype.stop = function () {
         this._refs.forEach(function (r) { try { r.ref.off("value", r.cb); } catch (e) {} });
         this._refs = [];

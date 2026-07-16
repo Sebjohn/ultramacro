@@ -72,6 +72,7 @@
                 var a = b.dataset.action;
                 if (a === "new-chantier") U.ui.openChantier();
                 else if (a === "new-pole") U.ui.openPole();
+                else if (a === "new-objective") U.ui.openObjective();
                 else if (a === "open-settings") U.ui.openSettings();
                 else if (a === "toggle-theme") toggleTheme();
                 else if (a === "toggle-search") {

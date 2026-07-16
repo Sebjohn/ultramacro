@@ -250,6 +250,47 @@
             });
     };
 
+    /* ===================== MODAL OBJECTIF ===================== */
+    ui.openObjective = function (id) {
+        var editing = id ? U.store.objective(id) : null;
+        $("objectiveForm").dataset.editing = editing ? editing.id : "";
+        $("objectiveModalTitle").innerHTML = editing
+            ? '<i class="fa-solid fa-bullseye"></i> Modifier l\'objectif'
+            : '<i class="fa-solid fa-bullseye"></i> Nouvel objectif';
+        var target = editing ? editing.target : 10;
+        var current = editing ? Math.min(editing.current, target) : 0;
+        $("fObjLabel").value = editing ? editing.label : "";
+        $("fObjPeriod").value = editing ? editing.period : "month";
+        $("fObjTarget").value = target;
+        var range = $("fObjCurrent");
+        range.max = target; range.value = current;
+        $("fObjTargetVal").textContent = target;
+        $("fObjCurrentVal").textContent = current;
+        $("objectiveDelete").hidden = !editing;
+        ui.openModal("objectiveModal");
+    };
+
+    function submitObjective(e) {
+        e.preventDefault();
+        var id = $("objectiveForm").dataset.editing || null;
+        var res = U.store.saveObjective({
+            id: id,
+            label: $("fObjLabel").value,
+            period: $("fObjPeriod").value,
+            target: $("fObjTarget").value,
+            current: $("fObjCurrent").value
+        });
+        if (!res) { ui.toast("L'intitulé de l'objectif est requis", "error"); return; }
+        ui.closeModal("objectiveModal");
+        ui.toast(id ? "Objectif mis à jour" : "Objectif créé", "success");
+    }
+
+    ui.deleteObjectiveFlow = function (id) {
+        var o = U.store.objective(id); if (!o) return;
+        ui.confirm('Supprimer l\'objectif « ' + o.label + " » ?", { title: "Supprimer l'objectif", okLabel: "Supprimer" })
+            .then(function (ok) { if (ok) { U.store.deleteObjective(id); ui.closeModal("objectiveModal"); ui.toast("Objectif supprimé", "info"); } });
+    };
+
     /* ===================== RÉGLAGES ===================== */
     // Liste des assignés (avec nb de chantiers + suppression)
     function renderAssignees() {
@@ -352,6 +393,19 @@
         $("poleDelete").addEventListener("click", function () {
             var id = $("poleForm").dataset.editing; if (id) ui.deletePoleFlow(id);
         });
+        $("objectiveForm").addEventListener("submit", submitObjective);
+        $("objectiveDelete").addEventListener("click", function () {
+            var id = $("objectiveForm").dataset.editing; if (id) ui.deleteObjectiveFlow(id);
+        });
+        $("fObjTarget").addEventListener("input", function () {
+            var t = Math.max(1, Math.round(Number(this.value) || 1));
+            var range = $("fObjCurrent");
+            range.max = t;
+            if (Number(range.value) > t) range.value = t;
+            $("fObjTargetVal").textContent = t;
+            $("fObjCurrentVal").textContent = range.value;
+        });
+        $("fObjCurrent").addEventListener("input", function () { $("fObjCurrentVal").textContent = this.value; });
         $("fProgress").addEventListener("input", function () { $("fProgressVal").textContent = this.value; });
         // Affiche le champ de saisie quand on choisit « Nouveau responsable… » (les deux listes).
         ["fRespSelect", "fPoleRespSelect"].forEach(function (selId) {

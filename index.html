@@ -88,6 +88,15 @@
                 <!-- KPIs -->
                 <div class="kpi-row" id="kpiRow"></div>
 
+                <!-- OBJECTIFS -->
+                <div class="section-head">
+                    <h2 class="section-title"><i class="fa-solid fa-bullseye"></i> Objectifs</h2>
+                    <button class="btn btn-ghost" data-action="new-objective">
+                        <i class="fa-solid fa-plus"></i><span>Ajouter un objectif</span>
+                    </button>
+                </div>
+                <div class="objectives-row" id="objectivesRow"></div>
+
                 <div class="section-head">
                     <h2 class="section-title"><i class="fa-solid fa-diagram-project"></i> Priorités par pôle</h2>
                     <div class="section-tools">
@@ -268,6 +277,46 @@
                     <button type="button" class="btn btn-danger-ghost" id="poleDelete" hidden><i class="fa-solid fa-trash"></i> Supprimer</button>
                     <div class="foot-right">
                         <button type="button" class="btn btn-ghost" data-close="poleModal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============ MODAL : OBJECTIF ============ -->
+    <div class="modal-backdrop" id="objectiveModal" hidden>
+        <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="objectiveModalTitle">
+            <div class="modal-head">
+                <h3 id="objectiveModalTitle"><i class="fa-solid fa-bullseye"></i> Nouvel objectif</h3>
+                <button class="icon-btn" data-close="objectiveModal" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="objectiveForm" class="modal-body">
+                <div class="field">
+                    <label for="fObjLabel">Intitulé <span class="req">*</span></label>
+                    <input type="text" id="fObjLabel" required maxlength="80" placeholder="Ex : Appeler 100% des élèves" />
+                </div>
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="fObjPeriod">Période</label>
+                        <select id="fObjPeriod">
+                            <option value="week">Hebdomadaire</option>
+                            <option value="month" selected>Mensuel</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="fObjTarget">Cible</label>
+                        <input type="number" id="fObjTarget" min="1" step="1" value="10" />
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="fObjCurrent">Avancement — <span id="fObjCurrentVal">0</span> / <span id="fObjTargetVal">10</span></label>
+                    <input type="range" id="fObjCurrent" min="0" max="10" step="1" value="0" />
+                </div>
+                <div class="modal-foot">
+                    <button type="button" class="btn btn-danger-ghost" id="objectiveDelete" hidden><i class="fa-solid fa-trash"></i> Supprimer</button>
+                    <div class="foot-right">
+                        <button type="button" class="btn btn-ghost" data-close="objectiveModal">Annuler</button>
                         <button type="submit" class="btn btn-primary">Enregistrer</button>
                     </div>
                 </div>

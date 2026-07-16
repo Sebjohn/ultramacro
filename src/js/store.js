@@ -8,7 +8,7 @@
 
     var listeners = [];
     var store = {
-        data: { poles: {}, chantiers: {} },
+        data: { poles: {}, chantiers: {}, objectives: {} },
         ready: false
     };
 
@@ -20,7 +20,8 @@
     store.set = function (data) {
         store.data = {
             poles: data && data.poles ? data.poles : {},
-            chantiers: data && data.chantiers ? data.chantiers : {}
+            chantiers: data && data.chantiers ? data.chantiers : {},
+            objectives: data && data.objectives ? data.objectives : {}
         };
         store.ready = true;
         emit();
@@ -229,6 +230,29 @@
         return true;
     };
 
+    /* --------- Objectifs généraux (hebdo / mensuel + barre de progression) --------- */
+    store.objectivesArray = function () {
+        return Object.keys(store.data.objectives).map(function (k) { return store.data.objectives[k]; })
+            .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    };
+    store.objective = function (id) { return store.data.objectives[id] || null; };
+
+    store.saveObjective = function (input) {
+        var existing = input.id ? store.objective(input.id) : null;
+        var obj = {
+            id: input.id || ("obj_" + U.uid()),
+            label: (input.label || "").trim(),
+            period: input.period === "week" ? "week" : "month",
+            target: Math.max(1, Math.round(Number(input.target) || 1)),
+            current: Math.max(0, Math.round(Number(input.current) || 0)),
+            order: existing ? existing.order : store.objectivesArray().length
+        };
+        if (!obj.label) return null;
+        U.active.upsertObjective(obj);
+        return obj;
+    };
+    store.deleteObjective = function (id) { U.active.deleteObjective(id); };
+
     // Export brut de l'état courant.
     store.exportData = function () {
         return {
@@ -236,7 +260,8 @@
             version: U.SCHEMA_VERSION,
             exportedAt: nowISO(),
             poles: store.data.poles,
-            chantiers: store.data.chantiers
+            chantiers: store.data.chantiers,
+            objectives: store.data.objectives
         };
     };
 

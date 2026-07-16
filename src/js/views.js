@@ -37,8 +37,29 @@
        ============================================================ */
     views.renderDashboard = function () {
         renderKPIs();
+        renderObjectives();
         renderPolesGrid();
     };
+
+    function renderObjectives() {
+        var el = $("objectivesRow");
+        if (!el) return;
+        var objs = U.store.objectivesArray();
+        if (!objs.length) {
+            el.innerHTML = '<button class="obj-empty" data-act="new-objective">＋ Ajoutez un objectif hebdomadaire ou mensuel</button>';
+            return;
+        }
+        el.innerHTML = objs.map(function (o) {
+            var pct = o.target > 0 ? Math.min(100, Math.round(o.current / o.target * 100)) : 0;
+            var periodLabel = o.period === "week" ? "Cette semaine" : "Ce mois";
+            return '<button class="obj-card' + (pct >= 100 ? " done" : "") + '" data-act="edit-objective" data-oid="' + o.id + '">' +
+                '<div class="obj-head"><span class="obj-label">' + U.escape(o.label) + "</span>" +
+                '<span class="obj-period">' + periodLabel + "</span></div>" +
+                '<div class="obj-track"><div class="obj-fill" style="width:' + pct + '%"></div></div>' +
+                '<div class="obj-foot"><span class="obj-val">' + o.current + " / " + o.target + "</span>" +
+                '<span class="obj-pct">' + pct + "%</span></div></button>";
+        }).join("");
+    }
 
     var KPI_ITEMS = [
         { key: "total",   label: "Total chantiers", color: "var(--faint)",   icon: "fa-solid fa-layer-group",  neutral: true },
@@ -267,12 +288,11 @@
     }
 
     /* ============================================================
-       VUE CARTE MENTALE (arbre horizontal : racine → pôles → chantiers)
+       VUE CARTE MENTALE (radiale : racine au centre → pôles → chantiers)
        ============================================================ */
     function mmTrunc(s, n) { s = String(s); return s.length > n ? s.slice(0, n - 1) + "…" : s; }
-    function mmLink(x1, y1, x2, y2, stroke) {
-        var mx = (x1 + x2) / 2;
-        return '<path d="M' + x1 + ',' + y1 + ' C' + mx + ',' + y1 + ' ' + mx + ',' + y2 + ' ' + x2 + ',' + y2 + '" fill="none" stroke="' + stroke + '" stroke-width="1.5" style="opacity:.5"/>';
+    function mmLine(x1, y1, x2, y2, stroke, w, op) {
+        return '<line x1="' + x1.toFixed(1) + '" y1="' + y1.toFixed(1) + '" x2="' + x2.toFixed(1) + '" y2="' + y2.toFixed(1) + '" stroke-width="' + w + '" style="stroke:' + stroke + ';opacity:' + op + '"/>';
     }
     views.renderMindmap = function () {
         var q = U.viewState.search;
@@ -282,50 +302,53 @@
             wrap.innerHTML = '<div class="empty-state"><i class="fa-solid fa-sitemap"></i><p>Aucun pôle à afficher.</p></div>';
             return;
         }
-        var rowH = 30, gap = 22, padY = 36;
-        var xRoot = 24, wRoot = 128, xPole = 250, wPole = 200, xCh = 500, wCh = 320, padX = 24;
-        var y = padY;
-        var layout = poles.map(function (p) {
-            var chs = U.store.sortByFocus(U.store.chantiersOfPole(p.id).filter(function (c) { return matches(c, q); }));
-            var blockH = Math.max(chs.length * rowH, 46);
-            var poleCy = y + blockH / 2;
-            var cpos = chs.map(function (c, i) { return { c: c, cy: y + i * rowH + rowH / 2 }; });
-            y += blockH + gap;
-            return { p: p, cy: poleCy, chs: cpos };
+        var data = poles.map(function (p) {
+            return { p: p, chs: U.store.sortByFocus(U.store.chantiersOfPole(p.id).filter(function (c) { return matches(c, q); })) };
         });
-        var totalH = Math.max(y + padY, 220);
-        var rootCy = totalH / 2;
-        var W = xCh + wCh + padX;
-        var svg = ['<svg class="mm-svg" viewBox="0 0 ' + W + ' ' + totalH + '" width="' + W + '" height="' + totalH + '" xmlns="http://www.w3.org/2000/svg">'];
-        layout.forEach(function (L) { svg.push(mmLink(xRoot + wRoot, rootCy, xPole, L.cy, "var(--border-2)")); });
-        layout.forEach(function (L) {
-            var color = U.themeColor(L.p.theme);
-            L.chs.forEach(function (cp) { svg.push(mmLink(xPole + wPole, L.cy, xCh, cp.cy, color)); });
-        });
-        // Racine
-        svg.push('<g><rect x="' + xRoot + '" y="' + (rootCy - 22) + '" rx="12" width="' + wRoot + '" height="44" style="fill:var(--brand)"/>' +
-            '<text x="' + (xRoot + wRoot / 2) + '" y="' + (rootCy + 5) + '" text-anchor="middle" style="fill:#fff;font-weight:700" font-size="14">Ultra Macro</text></g>');
-        // Pôles
-        layout.forEach(function (L) {
-            var color = U.themeColor(L.p.theme);
-            var n = U.store.chantiersOfPole(L.p.id).length;
-            svg.push('<g class="mm-node" data-act="open-pole" data-id="' + L.p.id + '">' +
-                '<rect x="' + xPole + '" y="' + (L.cy - 19) + '" rx="10" width="' + wPole + '" height="38" style="fill:var(--surface);stroke:' + color + ';stroke-width:1.5"/>' +
-                '<circle cx="' + (xPole + 17) + '" cy="' + L.cy + '" r="6" style="fill:' + color + '"/>' +
-                '<text x="' + (xPole + 32) + '" y="' + (L.cy + 4) + '" style="fill:var(--text);font-weight:600" font-size="13">' + U.escape(mmTrunc(L.p.name, 19)) + '</text>' +
-                '<text x="' + (xPole + wPole - 12) + '" y="' + (L.cy + 4) + '" text-anchor="end" style="fill:var(--faint)" font-size="11">' + n + '</text></g>');
-        });
-        // Chantiers
-        layout.forEach(function (L) {
-            L.chs.forEach(function (cp) {
-                var c = cp.c, prio = P[c.priorite] || P[U.DEFAULT_PRIORITY];
-                var op = c.statut === "termine" ? ";opacity:.55" : "";
-                svg.push('<g class="mm-node" data-act="edit-chantier" data-cid="' + c.id + '" style="' + op.slice(1) + '">' +
-                    '<rect x="' + xCh + '" y="' + (cp.cy - 12) + '" rx="7" width="' + wCh + '" height="24" style="fill:var(--surface);stroke:var(--border)"/>' +
-                    '<rect x="' + xCh + '" y="' + (cp.cy - 12) + '" rx="3" width="4" height="24" style="fill:' + prio.color + '"/>' +
-                    '<text x="' + (xCh + 13) + '" y="' + (cp.cy + 4) + '" style="fill:var(--muted)" font-size="11.5">' + U.escape(mmTrunc(c.nom, 42)) + '</text></g>');
+        var nP = data.length;
+        var maxCh = data.reduce(function (m, d) { return Math.max(m, d.chs.length); }, 1);
+        var TAU = Math.PI * 2, sectorFrac = 0.82, minSpacing = 24;
+        var R1 = 170, R2 = R1 + 130;
+        var need = (maxCh * minSpacing * nP) / (TAU * sectorFrac);
+        if (need > R2) R2 = need;
+        var room = 235;
+        var size = Math.round(2 * (R2 + room));
+        var cx = size / 2, cy = size / 2;
+        var links = [], poleNodes = [], chNodes = [];
+        data.forEach(function (d, i) {
+            var theta = -Math.PI / 2 + (i / nP) * TAU;
+            var ct = Math.cos(theta), stt = Math.sin(theta);
+            var px = cx + R1 * ct, py = cy + R1 * stt;
+            var color = U.themeColor(d.p.theme);
+            var right = ct >= -0.01;
+            links.push(mmLine(cx, cy, px, py, "var(--border-2)", 1.5, 0.5));
+            var n = d.chs.length;
+            poleNodes.push('<g class="mm-node" data-act="open-pole" data-id="' + d.p.id + '">' +
+                '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="11" style="fill:' + color + ';stroke:var(--surface);stroke-width:2"/>' +
+                '<text x="' + (px + ct * 16).toFixed(1) + '" y="' + (py + stt * 16 + 4).toFixed(1) + '" text-anchor="' + (right ? "start" : "end") + '" style="fill:var(--text);font-weight:700" font-size="13">' + U.escape(mmTrunc(d.p.name, 18)) + " (" + n + ")</text></g>");
+            var half = (TAU / nP) * sectorFrac / 2;
+            d.chs.forEach(function (ch, j) {
+                var a = (n === 1) ? theta : (theta - half + (2 * half) * (j / (n - 1)));
+                var ca = Math.cos(a), sa = Math.sin(a);
+                var chx = cx + R2 * ca, chy = cy + R2 * sa;
+                var prio = P[ch.priorite] || P[U.DEFAULT_PRIORITY];
+                links.push(mmLine(px, py, chx, chy, color, 1, 0.32));
+                var rc = ca >= -0.01, deg = a * 180 / Math.PI, rot = rc ? deg : deg + 180;
+                var tx = chx + ca * 8, ty = chy + sa * 8;
+                var op = ch.statut === "termine" ? ";opacity:.5" : "";
+                chNodes.push('<g class="mm-node" data-act="edit-chantier" data-cid="' + ch.id + '" style="cursor:pointer' + op + '">' +
+                    "<title>" + U.escape(ch.nom) + "</title>" +
+                    '<circle cx="' + chx.toFixed(1) + '" cy="' + chy.toFixed(1) + '" r="4" style="fill:' + prio.color + '"/>' +
+                    '<text x="' + tx.toFixed(1) + '" y="' + (ty + 3.5).toFixed(1) + '" text-anchor="' + (rc ? "start" : "end") + '" transform="rotate(' + rot.toFixed(1) + " " + tx.toFixed(1) + " " + ty.toFixed(1) + ')" style="fill:var(--muted)" font-size="10.5">' + U.escape(mmTrunc(ch.nom, 22)) + "</text></g>");
             });
         });
+        var svg = ['<svg class="mm-svg" viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '" xmlns="http://www.w3.org/2000/svg">'];
+        svg.push(links.join(""));
+        svg.push(poleNodes.join(""));
+        svg.push(chNodes.join(""));
+        svg.push('<g><circle cx="' + cx + '" cy="' + cy + '" r="34" style="fill:var(--brand)"/>' +
+            '<text x="' + cx + '" y="' + (cy - 3) + '" text-anchor="middle" style="fill:#fff;font-weight:800" font-size="13">Ultra</text>' +
+            '<text x="' + cx + '" y="' + (cy + 13) + '" text-anchor="middle" style="fill:#fff;font-weight:600;opacity:.9" font-size="11">Macro</text></g>');
         svg.push("</svg>");
         wrap.innerHTML = svg.join("");
     };
@@ -345,7 +368,7 @@
     /* --------- Délégation d'événements --------- */
     function actionFromEvent(e) {
         var el = e.target.closest("[data-act]");
-        return el ? { act: el.dataset.act, id: el.dataset.id, cid: el.dataset.cid } : null;
+        return el ? { act: el.dataset.act, id: el.dataset.id, cid: el.dataset.cid, oid: el.dataset.oid } : null;
     }
     function handleAction(e) {
         var a = actionFromEvent(e); if (!a) return;
@@ -353,6 +376,8 @@
         else if (a.act === "edit-pole") U.ui.openPole(a.id);
         else if (a.act === "edit-chantier") U.ui.openChantier(a.cid);
         else if (a.act === "delete-chantier") { e.stopPropagation(); U.ui.deleteChantierFlow(a.cid); }
+        else if (a.act === "edit-objective") U.ui.openObjective(a.oid);
+        else if (a.act === "new-objective") U.ui.openObjective();
     }
 
     /* --------- Glisser-déposer Kanban (par pôle + général) --------- */
@@ -425,7 +450,7 @@
     }
 
     views.init = function () {
-        ["polesGrid", "kanban", "kanbanGlobal", "timeline", "mindmap"].forEach(function (id) {
+        ["polesGrid", "kanban", "kanbanGlobal", "timeline", "mindmap", "objectivesRow"].forEach(function (id) {
             $(id).addEventListener("click", handleAction);
         });
         bindDnD($("kanban"));
