@@ -68,6 +68,7 @@
         var set = {};
         store.chantiersArray().forEach(function (c) { if (c.responsable) set[c.responsable] = true; });
         store.polesArray().forEach(function (p) { if (p.defaultResponsable) set[p.defaultResponsable] = true; });
+        store.dailyTasksArray().forEach(function (t) { if (t.assignee) set[t.assignee] = true; });
         return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, "fr"); });
     };
 
@@ -87,6 +88,9 @@
             if (p.defaultResponsable === name) {
                 U.active.upsertPole(Object.assign({}, p, { defaultResponsable: null }));
             }
+        });
+        store.dailyTasksArray().forEach(function (t) {
+            if (t.assignee === name) U.active.upsertDailyTask(Object.assign({}, t, { assignee: null, updatedAt: now }));
         });
         return count;
     };
@@ -333,6 +337,9 @@
         if (section && !store.data.dailysections[section]) section = null;
         var completedAt = null;
         if (done) completedAt = (existing && existing.completedAt) ? existing.completedAt : nowISO();
+        var assignee = (input.assignee !== undefined) ? ((input.assignee || "").trim() || null) : (existing ? existing.assignee : null);
+        var chantier = (input.chantier !== undefined) ? (input.chantier || null) : (existing ? existing.chantier : null);
+        if (chantier && !store.chantier(chantier)) chantier = null; // lien vers un chantier inexistant → aucun
         var task = {
             id: input.id || ("task_" + U.uid()),
             title: (input.title || "").trim(),
@@ -340,6 +347,8 @@
             done: done,
             priority: U.PRIORITIES[input.priority] ? input.priority : null,
             due: input.due || null,
+            assignee: assignee,
+            chantier: chantier,
             notes: (input.notes || "").trim() || null,
             order: existing ? existing.order : Date.now(),
             createdAt: existing ? existing.createdAt : nowISO(),

@@ -503,11 +503,34 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 .task-row.is-done .task-check { background: var(--termine); border-color: var(--termine); color: #fff; }
 .task-row.is-done .task-title { color: var(--faint); }
 
-.task-add { display: flex; align-items: center; gap: 11px; padding: 8px 10px; color: var(--faint); }
-.task-add > i { font-size: 11px; width: 20px; text-align: center; flex-shrink: 0; }
-.task-add-input { flex: 1; min-width: 0; border: none; background: transparent; font: inherit; font-size: 13.5px; color: var(--text); padding: 2px 0; outline: none; }
-.task-add-input::placeholder { color: var(--faint); }
-.task-add:focus-within { color: var(--brand); }
+/* Chips assigné + chantier sur la ligne de tâche */
+.task-assignee { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--faint); }
+.task-assignee i { font-size: 10px; }
+.task-chantier { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; color: color-mix(in srgb, var(--pole, var(--muted)) 70%, var(--text)); background: color-mix(in srgb, var(--pole, var(--muted)) 12%, transparent); }
+.task-chantier i { font-size: 9px; }
+
+/* Ligne de saisie rapide : nom + priorité + échéance + assigné + chantier */
+.qa-row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; flex-wrap: wrap; }
+.qa-standalone { padding: 4px; }
+.qa-plus { font-size: 11px; width: 20px; text-align: center; color: var(--faint); flex-shrink: 0; }
+.qa-name { flex: 1 1 200px; min-width: 150px; border: none; background: transparent; font: inherit; font-size: 13.5px; color: var(--text); padding: 4px 0; outline: none; }
+.qa-name::placeholder { color: var(--faint); }
+.qa-field { font: inherit; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; cursor: pointer; max-width: 160px; transition: border-color .14s; }
+.qa-field:hover { border-color: var(--border-2); }
+.qa-field:focus { outline: none; border-color: var(--brand); box-shadow: var(--ring); }
+.qa-due { color: var(--muted); }
+
+/* Organiser par (sélecteur d'en-tête) */
+.daily-groupby-wrap { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--muted); }
+.daily-groupby-wrap > i { font-size: 12px; color: var(--faint); }
+.daily-groupby { font: inherit; font-size: 12.5px; font-weight: 600; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 9px; padding: 7px 10px; cursor: pointer; transition: border-color .14s; }
+.daily-groupby:hover { border-color: var(--border-2); }
+.daily-groupby:focus { outline: none; border-color: var(--brand); box-shadow: var(--ring); }
+
+/* En-têtes de groupes calculés (non manuels) */
+.daily-section.is-flat { background: var(--surface); }
+.dg-head .dg-sub { font-size: 11px; color: var(--faint); font-weight: 600; margin-left: 2px; }
+.dg-head i { color: var(--faint); font-size: 12px; }
 
 /* ===================== CARTE MENTALE (radiale) ===================== */
 .mindmap-wrap { display: flex; justify-content: center; padding: 8px 4px 28px; overflow-x: auto; }

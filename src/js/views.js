@@ -400,17 +400,37 @@
     function matchesTask(t, q) {
         if (!q) return true;
         q = q.toLowerCase();
+        var ch = t.chantier ? U.store.chantier(t.chantier) : null;
         return (t.title || "").toLowerCase().indexOf(q) !== -1
-            || (t.notes || "").toLowerCase().indexOf(q) !== -1;
+            || (t.notes || "").toLowerCase().indexOf(q) !== -1
+            || (t.assignee || "").toLowerCase().indexOf(q) !== -1
+            || (ch && (ch.nom || "").toLowerCase().indexOf(q) !== -1);
     }
 
-    function taskRow(t) {
+    /* --- Comparateurs de tri (terminées toujours reléguées en bas) --- */
+    function prioRank(t) { return t.priority && P[t.priority] ? P[t.priority].rank : 3; }
+    function dueVal(t) { var d = U.parseDate(t.due); return d ? d.getTime() : Infinity; }
+    function cmpFocus(a, b) { return prioRank(a) - prioRank(b) || dueVal(a) - dueVal(b) || String(a.createdAt).localeCompare(String(b.createdAt)); }
+    function cmpDue(a, b) { return dueVal(a) - dueVal(b) || prioRank(a) - prioRank(b); }
+    function cmpChrono(a, b) { return String(a.createdAt).localeCompare(String(b.createdAt)); }
+    function doneLast(cmp) { return function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0) || cmp(a, b); }; }
+
+    function taskRow(t, draggable) {
         var prio = t.priority && P[t.priority] ? P[t.priority] : null;
         var meta = "";
         if (prio) meta += '<span class="task-prio" style="background:' + prio.color + '" title="Priorité ' + prio.label + '"></span>';
         if (t.due) meta += '<span class="task-due"><i class="fa-regular fa-clock"></i> ' + U.escape(U.relativeLabel(t.due)) + "</span>";
+        if (t.assignee) meta += '<span class="task-assignee"><i class="fa-regular fa-user"></i> ' + U.escape(t.assignee) + "</span>";
+        if (t.chantier) {
+            var ch = U.store.chantier(t.chantier);
+            if (ch) {
+                var pole = U.store.pole(ch.pole);
+                var color = pole ? U.themeColor(pole.theme) : "var(--faint)";
+                meta += '<span class="task-chantier" style="--pole:' + color + '"><i class="fa-solid fa-diagram-project"></i> ' + U.escape(ch.nom) + "</span>";
+            }
+        }
         var metaHTML = meta ? '<div class="task-meta">' + meta + "</div>" : "";
-        return '<div class="task-row' + (t.done ? " is-done" : "") + '" draggable="true" data-tid="' + t.id + '">' +
+        return '<div class="task-row' + (t.done ? " is-done" : "") + '"' + (draggable ? ' draggable="true"' : "") + ' data-tid="' + t.id + '">' +
             '<button class="task-check" data-act="toggle-task" data-tid="' + t.id + '" aria-label="' + (t.done ? "Rouvrir la tâche" : "Marquer terminée") + '"><i class="fa-solid fa-check"></i></button>' +
             '<div class="task-main" data-act="edit-task" data-tid="' + t.id + '">' +
                 '<div class="task-title">' + U.escape(t.title) + "</div>" + metaHTML +
@@ -419,6 +439,44 @@
                 '<button class="task-act" data-act="edit-task" data-tid="' + t.id + '" title="Modifier"><i class="fa-solid fa-pen"></i></button>' +
                 '<button class="task-act del" data-act="del-task" data-tid="' + t.id + '" title="Supprimer"><i class="fa-solid fa-trash"></i></button>' +
             "</div>" +
+        "</div>";
+    }
+
+    /* --- Options réutilisables pour la saisie rapide --- */
+    function priorityOptions(sel) {
+        var o = '<option value="">Priorité</option>';
+        U.PRIORITY_ORDER.forEach(function (k) { o += '<option value="' + k + '"' + (sel === k ? " selected" : "") + ">" + U.PRIORITIES[k].label + "</option>"; });
+        return o;
+    }
+    function assigneeOptions(sel, placeholder) {
+        var o = '<option value="">' + (placeholder || "Assigné") + "</option>";
+        U.store.responsables().forEach(function (n) { o += '<option value="' + U.escape(n) + '"' + (sel === n ? " selected" : "") + ">" + U.escape(n) + "</option>"; });
+        return o;
+    }
+    function chantierOptions(sel, placeholder) {
+        var o = '<option value="">' + (placeholder || "Chantier") + "</option>";
+        U.store.polesArray().forEach(function (p) {
+            var list = U.store.chantiersOfPole(p.id);
+            if (!list.length) return;
+            o += '<optgroup label="' + U.escape(p.name) + '">';
+            list.forEach(function (c) { o += '<option value="' + U.escape(c.id) + '"' + (sel === c.id ? " selected" : "") + ">" + U.escape(c.nom) + "</option>"; });
+            o += "</optgroup>";
+        });
+        return o;
+    }
+    U.dailyOptions = { assignee: assigneeOptions, chantier: chantierOptions, priority: priorityOptions };
+
+    // Ligne de saisie rapide : nom + priorité + échéance + assigné + chantier (Entrée pour créer).
+    function quickAddRow(sid) {
+        var key = sid || "";
+        var d = U.viewState.quickAdd[key] || {};
+        return '<div class="qa-row" data-sid="' + key + '">' +
+            '<i class="fa-solid fa-plus qa-plus"></i>' +
+            '<input class="qa-name" data-sid="' + key + '" maxlength="200" placeholder="Ajouter une tâche…" />' +
+            '<select class="qa-field qa-priority" data-sid="' + key + '" title="Priorité">' + priorityOptions(d.priority) + "</select>" +
+            '<input class="qa-field qa-due" type="date" data-sid="' + key + '" title="Échéance" />' +
+            '<select class="qa-field qa-assignee" data-sid="' + key + '" title="Assigné">' + assigneeOptions(d.assignee) + "</select>" +
+            '<select class="qa-field qa-chantier" data-sid="' + key + '" title="Chantier">' + chantierOptions(d.chantier) + "</select>" +
         "</div>";
     }
 
@@ -432,10 +490,8 @@
 
         var tasks = all.filter(function (t) { return matchesTask(t, q); });
         if (U.viewState.dailyHideDone) tasks = tasks.filter(function (t) { return !t.done; });
-        // Actives d'abord, terminées ensuite (texte normal, jamais barré) ; ordre conservé.
-        tasks.sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0) || (a.order || 0) - (b.order || 0); });
+        tasks.sort(doneLast(function (a, b) { return (a.order || 0) - (b.order || 0); }));
 
-        // En recherche : masquer les sections sans résultat (jamais le groupe implicite structurant).
         if (q && !tasks.length && !isImplicit) return "";
 
         var editing = !isImplicit && U.viewState.editingSection === sec.id;
@@ -455,32 +511,104 @@
 
         var body = "";
         if (!collapsed) {
-            var rows = tasks.map(taskRow).join("");
-            var addRow = '<div class="task-add"><i class="fa-solid fa-plus"></i>' +
-                '<input class="task-add-input" data-sid="' + sid + '" maxlength="200" placeholder="Ajouter une tâche" /></div>';
-            body = '<div class="daily-list" data-sid="' + sid + '">' + rows + addRow + "</div>";
+            var rows = tasks.map(function (t) { return taskRow(t, true); }).join("");
+            body = '<div class="daily-list" data-sid="' + sid + '">' + rows + quickAddRow(sid) + "</div>";
         }
         return '<div class="daily-section' + (isImplicit ? " is-implicit" : "") + '" data-sid="' + sid + '">' + head + body + "</div>";
+    }
+
+    // Groupes calculés selon le mode d'organisation choisi.
+    function visibleTasks() {
+        var q = U.viewState.search;
+        return U.store.dailyTasksArray().filter(function (t) {
+            if (!matchesTask(t, q)) return false;
+            if (U.viewState.dailyHideDone && t.done) return false;
+            return true;
+        });
+    }
+    function computeGroups(mode) {
+        var tasks = visibleTasks(), groups = [];
+        if (mode === "chrono") {
+            groups.push({ label: null, tasks: tasks.slice().sort(doneLast(cmpChrono)) });
+        } else if (mode === "focus") {
+            groups.push({ label: null, tasks: tasks.slice().sort(doneLast(cmpFocus)) });
+        } else if (mode === "priority") {
+            U.PRIORITY_ORDER.concat([null]).forEach(function (k) {
+                var g = tasks.filter(function (t) { return (t.priority && P[t.priority] ? t.priority : null) === k; });
+                if (g.length) groups.push({ label: k ? P[k].label : "Sans priorité", icon: "fa-solid fa-flag", tasks: g.sort(doneLast(cmpDue)) });
+            });
+        } else if (mode === "due") {
+            [
+                { label: "En retard", t: function (n) { return n !== null && n < 0; } },
+                { label: "Aujourd'hui", t: function (n) { return n === 0; } },
+                { label: "Cette semaine", t: function (n) { return n >= 1 && n <= 7; } },
+                { label: "Ce mois-ci", t: function (n) { return n > 7 && n <= 31; } },
+                { label: "Plus tard", t: function (n) { return n > 31; } },
+                { label: "Sans échéance", t: function (n) { return n === null; } }
+            ].forEach(function (b) {
+                var g = tasks.filter(function (t) { return b.t(U.daysUntil(t.due)); });
+                if (g.length) groups.push({ label: b.label, icon: "fa-regular fa-calendar", tasks: g.sort(doneLast(cmpDue)) });
+            });
+        } else if (mode === "assignee") {
+            var names = {};
+            tasks.forEach(function (t) { if (t.assignee) names[t.assignee] = true; });
+            Object.keys(names).sort(function (a, b) { return a.localeCompare(b, "fr"); }).forEach(function (a) {
+                groups.push({ label: a, icon: "fa-regular fa-user", tasks: tasks.filter(function (t) { return t.assignee === a; }).sort(doneLast(cmpFocus)) });
+            });
+            var none = tasks.filter(function (t) { return !t.assignee; });
+            if (none.length) groups.push({ label: "Non assigné", icon: "fa-regular fa-user", tasks: none.sort(doneLast(cmpFocus)) });
+        } else if (mode === "chantier") {
+            U.store.polesArray().forEach(function (p) {
+                U.store.chantiersOfPole(p.id).forEach(function (c) {
+                    var g = tasks.filter(function (t) { return t.chantier === c.id; });
+                    if (g.length) groups.push({ label: c.nom, sub: p.name, icon: "fa-solid fa-diagram-project", color: U.themeColor(p.theme), tasks: g.sort(doneLast(cmpFocus)) });
+                });
+            });
+            var noCh = tasks.filter(function (t) { return !t.chantier || !U.store.chantier(t.chantier); });
+            if (noCh.length) groups.push({ label: "Sans chantier", icon: "fa-solid fa-diagram-project", tasks: noCh.sort(doneLast(cmpFocus)) });
+        }
+        return groups;
+    }
+    function groupBlock(g) {
+        var rows = g.tasks.map(function (t) { return taskRow(t, false); }).join("");
+        var head = "";
+        if (g.label !== null) {
+            var activeCount = g.tasks.filter(function (t) { return !t.done; }).length;
+            var icon = g.icon ? '<i class="' + g.icon + '"' + (g.color ? ' style="color:' + g.color + '"' : "") + "></i> " : "";
+            var sub = g.sub ? '<span class="dg-sub">' + U.escape(g.sub) + "</span>" : "";
+            head = '<div class="daily-section-head dg-head">' + icon + '<h3 class="ds-name">' + U.escape(g.label) + "</h3>" + sub +
+                '<span class="ds-count">' + activeCount + "</span></div>";
+        }
+        return '<div class="daily-section' + (g.label === null ? " is-flat" : "") + '">' + head + '<div class="daily-list">' + rows + "</div></div>";
     }
 
     views.renderDaily = function () {
         var board = $("dailyBoard");
         if (!board) return;
-        var sections = U.store.dailySectionsArray();
-        var showImplicit = (sections.length === 0) || U.store.hasOrphanTasks();
+        var mode = U.viewState.dailyGroup || "manual";
+        var addSecBtn = $("dailyAddSection"); if (addSecBtn) addSecBtn.hidden = (mode !== "manual");
+
         var html = "";
-        if (showImplicit) html += sectionBlock({ id: "", name: "Mes tâches" }, true);
-        sections.forEach(function (s) { html += sectionBlock(s, false); });
-        if (!html) html = '<div class="empty-state"><i class="fa-regular fa-square-check"></i><p>Aucune tâche ne correspond.</p></div>';
+        if (mode === "manual") {
+            var sections = U.store.dailySectionsArray();
+            var showImplicit = (sections.length === 0) || U.store.hasOrphanTasks();
+            if (showImplicit) html += sectionBlock({ id: "", name: "Mes tâches" }, true);
+            sections.forEach(function (s) { html += sectionBlock(s, false); });
+            if (!html) html = '<div class="empty-state"><i class="fa-regular fa-square-check"></i><p>Aucune tâche ne correspond.</p></div>';
+        } else {
+            html += '<div class="daily-section is-flat qa-standalone">' + quickAddRow("") + "</div>";
+            var groups = computeGroups(mode);
+            if (!groups.length) html += '<div class="empty-state"><i class="fa-regular fa-square-check"></i><p>Aucune tâche ne correspond.</p></div>';
+            groups.forEach(function (g) { html += groupBlock(g); });
+        }
         board.innerHTML = html;
 
-        // Rester dans le champ d'ajout après création d'une tâche (flux « taper, Entrée, continuer »).
+        // Rester dans le champ de saisie rapide après création (flux « taper, Entrée, continuer »).
         if (U.viewState._focusAddSid !== undefined) {
             var fs = U.viewState._focusAddSid; U.viewState._focusAddSid = undefined;
-            var ai = board.querySelector('.task-add-input[data-sid="' + (fs || "") + '"]');
+            var ai = board.querySelector('.qa-name[data-sid="' + (fs || "") + '"]');
             if (ai) ai.focus();
         }
-        // Garder le focus dans le champ de renommage de section pendant l'édition.
         if (U.viewState.editingSection) {
             var ei = board.querySelector('.ds-name-input[data-sid="' + U.viewState.editingSection + '"]');
             if (ei && document.activeElement !== ei) { ei.focus(); ei.select(); }
@@ -650,24 +778,45 @@
         bindDnD($("kanbanGlobal"));
         bindPoleReorder($("polesGrid"));
 
-        // Daily tasks : ajout inline (Entrée), renommage de section (Entrée / Échap / blur), glisser-déposer.
+        // Daily tasks : saisie rapide (Entrée), renommage de section (Entrée / Échap / blur), glisser-déposer.
         var board = $("dailyBoard");
         bindDailyDnD(board);
         board.addEventListener("keydown", function (e) {
             var el = e.target;
-            if (el.classList.contains("task-add-input")) {
+            if (el.classList.contains("qa-name")) {
                 if (e.key === "Enter") {
                     e.preventDefault();
-                    var title = el.value.trim();
-                    if (title) {
-                        var sid = el.dataset.sid || null;
-                        U.viewState._focusAddSid = el.dataset.sid || "";
-                        U.store.saveDailyTask({ title: title, section: sid });
-                    }
+                    var row = el.closest(".qa-row"); if (!row) return;
+                    var title = row.querySelector(".qa-name").value.trim();
+                    if (!title) return;
+                    var key = row.dataset.sid || "";
+                    var prio = row.querySelector(".qa-priority").value || null;
+                    var assignee = row.querySelector(".qa-assignee").value || null;
+                    var chantier = row.querySelector(".qa-chantier").value || null;
+                    // Mémorise les champs « collants » pour enchaîner les saisies.
+                    U.viewState.quickAdd[key] = { priority: prio, assignee: assignee, chantier: chantier };
+                    U.viewState._focusAddSid = key;
+                    U.store.saveDailyTask({
+                        title: title, section: (row.dataset.sid || null),
+                        priority: prio, due: row.querySelector(".qa-due").value || null,
+                        assignee: assignee, chantier: chantier
+                    });
                 }
             } else if (el.classList.contains("ds-name-input")) {
                 if (e.key === "Enter") { e.preventDefault(); el.blur(); }
                 else if (e.key === "Escape") { e.preventDefault(); commitSectionRename(el, true); }
+            }
+        });
+        // Champs « collants » de la saisie rapide (priorité / assigné / chantier) conservés entre les créations.
+        board.addEventListener("change", function (e) {
+            var el = e.target;
+            if (el.classList.contains("qa-priority") || el.classList.contains("qa-assignee") || el.classList.contains("qa-chantier")) {
+                var row = el.closest(".qa-row"); if (!row) return;
+                U.viewState.quickAdd[row.dataset.sid || ""] = {
+                    priority: row.querySelector(".qa-priority").value || null,
+                    assignee: row.querySelector(".qa-assignee").value || null,
+                    chantier: row.querySelector(".qa-chantier").value || null
+                };
             }
         });
         board.addEventListener("focusout", function (e) {

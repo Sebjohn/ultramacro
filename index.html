@@ -48,7 +48,7 @@
                 <i class="fa-regular fa-calendar"></i><span>Calendrier</span>
             </button>
             <button class="nav-pill nav-more-btn" id="moreBtn" type="button" aria-haspopup="true" aria-expanded="false" data-more>
-                <i class="fa-solid fa-ellipsis"></i><span>Autres</span><i class="fa-solid fa-chevron-down chev"></i>
+                <span>Autres</span><i class="fa-solid fa-chevron-down chev"></i>
             </button>
         </nav>
 
@@ -181,6 +181,17 @@
                 <div class="section-head">
                     <h2 class="section-title"><i class="fa-solid fa-list-check"></i> Daily tasks</h2>
                     <div class="section-tools">
+                        <label class="daily-groupby-wrap"><i class="fa-solid fa-layer-group"></i>
+                            <select id="dailyGroupBy" class="daily-groupby" aria-label="Organiser les tâches par">
+                                <option value="manual">Sections</option>
+                                <option value="chrono">Chronologique</option>
+                                <option value="due">Échéance</option>
+                                <option value="priority">Priorité</option>
+                                <option value="focus">Priorité + échéance</option>
+                                <option value="assignee">Assigné</option>
+                                <option value="chantier">Chantier</option>
+                            </select>
+                        </label>
                         <label class="daily-toggle"><input type="checkbox" id="dailyHideDone" /> <span>Masquer les tâches terminées</span></label>
                         <button class="btn btn-ghost" id="dailyAddSection"><i class="fa-solid fa-folder-plus"></i><span>Section</span></button>
                     </div>
@@ -364,6 +375,16 @@
                     <div class="field">
                         <label for="fTaskDue"><i class="fa-regular fa-clock"></i> Échéance</label>
                         <input type="date" id="fTaskDue" />
+                    </div>
+                    <div class="field">
+                        <label for="fTaskAssignee"><i class="fa-regular fa-user"></i> Assigné</label>
+                        <select id="fTaskAssignee"></select>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="fTaskChantier"><i class="fa-solid fa-diagram-project"></i> Chantier lié</label>
+                        <select id="fTaskChantier"></select>
                     </div>
                     <div class="field">
                         <label class="check-field" for="fTaskDone"><input type="checkbox" id="fTaskDone" /> <span>Terminée</span></label>

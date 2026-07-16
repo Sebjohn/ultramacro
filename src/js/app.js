@@ -14,6 +14,8 @@
         calFilter: "all",
         // Daily tasks
         dailyHideDone: false,
+        dailyGroup: "manual",
+        quickAdd: {},
         collapsedSections: {},
         editingSection: null,
         _focusAddSid: undefined
@@ -146,6 +148,11 @@
         var hideDone = $("dailyHideDone");
         if (hideDone) hideDone.addEventListener("change", function () {
             U.viewState.dailyHideDone = hideDone.checked;
+            U.views.renderDaily();
+        });
+        var groupBy = $("dailyGroupBy");
+        if (groupBy) groupBy.addEventListener("change", function () {
+            U.viewState.dailyGroup = groupBy.value;
             U.views.renderDaily();
         });
 

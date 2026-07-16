@@ -94,6 +94,8 @@
             done: !!t.done,
             priority: U.PRIORITIES[t.priority] ? t.priority : null,
             due: t.due || null,
+            assignee: t.assignee || null,
+            chantier: t.chantier ? sanitizeKey(t.chantier) : null,
             notes: t.notes || null,
             order: (typeof t.order === "number") ? t.order : (i || 0),
             createdAt: t.createdAt || now,
