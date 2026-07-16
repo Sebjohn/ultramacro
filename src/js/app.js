@@ -88,13 +88,6 @@
         search.addEventListener("input", onSearch);
 
         // Tri des pôles
-        $("poleSort").addEventListener("click", function (e) {
-            var b = e.target.closest(".seg-btn"); if (!b) return;
-            U.viewState.poleSort = b.dataset.sort;
-            $("poleSort").querySelectorAll(".seg-btn").forEach(function (x) { x.classList.toggle("is-active", x === b); });
-            U.views.renderDashboard();
-        });
-
         // Filtre calendrier
         $("calFilter").addEventListener("click", function (e) {
             var b = e.target.closest(".seg-btn"); if (!b) return;

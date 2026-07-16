@@ -283,11 +283,11 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 /* Engrenage toujours visible et cliquable (fiabilité) */
 .pole-gear { position: absolute; top: 13px; right: 13px; z-index: 3; width: 34px; height: 34px; font-size: 13px; background: transparent; border-color: transparent; color: var(--faint); }
 .pole-gear:hover, .pole-gear:focus-visible { background: var(--surface-2); border-color: var(--border); color: var(--brand); }
-/* Réordonnancement des pôles (mode « Ordre défini ») */
-.pole-grip { position: absolute; left: 5px; top: 50%; transform: translateY(-50%); z-index: 3; display: grid; place-items: center; width: 18px; height: 34px; color: var(--faint); cursor: grab; font-size: 13px; opacity: .55; transition: opacity .15s, color .15s; }
-.pole-grip:hover { opacity: 1; color: var(--brand); }
+/* Réordonnancement des pôles — poignée en haut à droite, à gauche de l'engrenage, au survol */
+.pole-grip { position: absolute; top: 13px; right: 50px; z-index: 3; display: grid; place-items: center; width: 26px; height: 34px; color: var(--faint); cursor: grab; font-size: 13px; opacity: 0; transition: opacity .15s, color .15s; }
+.pole-card:hover .pole-grip, .pole-grip:focus-visible { opacity: 1; }
+.pole-grip:hover { color: var(--brand); }
 .pole-grip:active { cursor: grabbing; }
-.pole-card.pole-drag { padding-left: 32px; }   /* place pour la poignée à gauche */
 .pole-card.dragging { opacity: .5; }
 .pole-card.drop-target { border-color: var(--brand); box-shadow: var(--ring); }
 
