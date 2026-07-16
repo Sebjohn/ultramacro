@@ -11,11 +11,18 @@
         pole: null,
         search: "",
         poleSort: "manual",
-        calFilter: "all"
+        calFilter: "all",
+        // Daily tasks
+        dailyHideDone: false,
+        collapsedSections: {},
+        editingSection: null,
+        _focusAddSid: undefined
     };
 
     /* --------- Navigation --------- */
-    var TARGETS = { pole: "view-pole", kanban: "view-kanban", mindmap: "view-mindmap", calendar: "view-calendar", dashboard: "view-dashboard" };
+    var TARGETS = { pole: "view-pole", kanban: "view-kanban", mindmap: "view-mindmap", calendar: "view-calendar", daily: "view-daily", dashboard: "view-dashboard" };
+    // Vues regroupées sous le menu « Autres ».
+    var MORE_VIEWS = { kanban: 1, mindmap: 1, daily: 1 };
 
     U.nav = function (view, param) {
         if (view === "pole") {
@@ -28,12 +35,17 @@
         document.querySelectorAll(".view").forEach(function (v) { v.classList.remove("is-active"); });
         $(TARGETS[view] || "view-dashboard").classList.add("is-active");
 
-        // Onglets : "Vue d'ensemble" reste actif quand on descend dans un pôle.
-        document.querySelectorAll(".main-nav .nav-pill, .mobile-tabbar .tab[data-nav]").forEach(function (b) {
+        // Onglets directs : "Vue d'ensemble" reste actif quand on descend dans un pôle.
+        document.querySelectorAll(".main-nav .nav-pill[data-nav], .mobile-tabbar .tab[data-nav]").forEach(function (b) {
             var isActive = b.dataset.nav === view
                 || (b.dataset.nav === "dashboard" && view === "pole");
             b.classList.toggle("is-active", isActive);
         });
+        // Bouton "Autres" actif quand on est sur une de ses sous-vues.
+        var moreActive = !!MORE_VIEWS[view];
+        document.querySelectorAll("[data-more]").forEach(function (b) { b.classList.toggle("is-active", moreActive); });
+        document.querySelectorAll("#moreMenu .nav-menu-item").forEach(function (b) { b.classList.toggle("is-current", b.dataset.nav === view); });
+        if (U._closeMore) U._closeMore();
 
         document.body.classList.remove("search-active"); // referme la recherche mobile
         U.views.render();
@@ -87,13 +99,54 @@
         var onSearch = U.debounce(function () { U.viewState.search = search.value.trim(); U.views.render(); }, 160);
         search.addEventListener("input", onSearch);
 
-        // Tri des pôles
         // Filtre calendrier
         $("calFilter").addEventListener("click", function (e) {
             var b = e.target.closest(".seg-btn"); if (!b) return;
             U.viewState.calFilter = b.dataset.cal;
             $("calFilter").querySelectorAll(".seg-btn").forEach(function (x) { x.classList.toggle("is-active", x === b); });
             U.views.renderTimeline();
+        });
+
+        // Menu « Autres » (popover partagé desktop / feuille mobile)
+        var moreMenu = $("moreMenu");
+        function moreOpen() { return !moreMenu.hidden; }
+        function positionMore() {
+            if (window.innerWidth <= 640) {
+                moreMenu.classList.add("as-sheet");
+                moreMenu.style.top = ""; moreMenu.style.left = ""; moreMenu.style.right = "";
+                return;
+            }
+            moreMenu.classList.remove("as-sheet");
+            var btn = $("moreBtn"); if (!btn) return;
+            var r = btn.getBoundingClientRect();
+            moreMenu.style.top = (r.bottom + 6) + "px";
+            moreMenu.style.left = Math.max(8, r.left) + "px";
+            moreMenu.style.right = "auto";
+        }
+        function setMoreExpanded(v) { var mb = $("moreBtn"); if (mb) mb.setAttribute("aria-expanded", v ? "true" : "false"); }
+        function openMore() { positionMore(); moreMenu.hidden = false; document.body.classList.add("more-open"); setMoreExpanded(true); }
+        function closeMore() { moreMenu.hidden = true; document.body.classList.remove("more-open"); setMoreExpanded(false); }
+        U._closeMore = closeMore;
+        document.querySelectorAll("[data-more]").forEach(function (b) {
+            b.addEventListener("click", function (e) { e.stopPropagation(); moreOpen() ? closeMore() : openMore(); });
+        });
+        document.addEventListener("click", function (e) {
+            if (!moreOpen()) return;
+            if (e.target.closest("#moreMenu") || e.target.closest("[data-more]")) return;
+            closeMore();
+        });
+        window.addEventListener("resize", function () { if (moreOpen()) closeMore(); });
+
+        // Daily tasks : ajouter une section, masquer les tâches terminées
+        var addSec = $("dailyAddSection");
+        if (addSec) addSec.addEventListener("click", function () {
+            var sec = U.store.saveDailySection({ name: "Nouvelle section" });
+            if (sec) { U.viewState.editingSection = sec.id; U.views.renderDaily(); }
+        });
+        var hideDone = $("dailyHideDone");
+        if (hideDone) hideDone.addEventListener("change", function () {
+            U.viewState.dailyHideDone = hideDone.checked;
+            U.views.renderDaily();
         });
 
         // Raccourcis clavier

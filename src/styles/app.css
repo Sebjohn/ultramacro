@@ -147,6 +147,25 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 .nav-pill.is-active { background: var(--surface); color: var(--text); box-shadow: var(--card); }
 .nav-pill.is-active i { color: var(--brand); }
 .nav-pill i { font-size: 13px; }
+.nav-more-btn .chev { font-size: 10px; margin-left: -3px; transition: transform .18s var(--ease); }
+.nav-more-btn[aria-expanded="true"] .chev { transform: rotate(180deg); }
+
+/* Menu « Autres » — popover partagé (positionné en JS sur desktop, feuille en bas sur mobile) */
+.nav-menu {
+    position: fixed; z-index: 60; min-width: 214px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 13px;
+    box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; gap: 2px;
+    animation: fade .14s var(--ease);
+}
+.nav-menu-item {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    border: none; background: transparent; color: var(--text); font: inherit; font-size: 13.5px; font-weight: 600;
+    padding: 10px 12px; border-radius: 9px; cursor: pointer; transition: background .14s, color .14s;
+}
+.nav-menu-item i { width: 18px; text-align: center; color: var(--faint); font-size: 14px; }
+.nav-menu-item:hover { background: var(--surface-2); }
+.nav-menu-item.is-current { color: var(--brand); }
+.nav-menu-item.is-current i { color: var(--brand); }
 
 .header-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
@@ -312,7 +331,7 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 .done-row { display: flex; align-items: center; gap: 9px; cursor: pointer; padding: 6px 10px; border-radius: var(--radius-xs); background: var(--bg-soft); border: 1px solid transparent; transition: border-color .14s; }
 .done-row:hover { border-color: var(--border-2); }
 .done-row > i { font-size: 10px; color: var(--faint); flex-shrink: 0; }
-.done-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 500; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--faint) 55%, transparent); }
+.done-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 500; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .done-when { font-size: 10.5px; font-weight: 600; color: var(--faint); flex-shrink: 0; }
 
 .pole-foot { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border); }
@@ -434,7 +453,61 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 .tl-group.done h3 { color: var(--muted); }
 .tl-group.done .tl-group-head i { color: var(--faint); }
 .tl-row.done { opacity: .72; }
-.tl-row.done .tl-name { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--faint) 55%, transparent); }
+
+/* ===================== DAILY TASKS (liste « à la Asana ») ===================== */
+.daily { display: flex; flex-direction: column; gap: 18px; max-width: 860px; }
+.daily-toggle { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); cursor: pointer; user-select: none; }
+.daily-toggle input { accent-color: var(--brand); width: 15px; height: 15px; cursor: pointer; }
+/* Champ case à cocher dans les formulaires (ex. « Terminée ») */
+.check-field { display: inline-flex; align-items: center; gap: 9px; font-size: 13.5px; font-weight: 500; color: var(--text); cursor: pointer; user-select: none; padding: 9px 0; }
+.check-field input { accent-color: var(--brand); width: 16px; height: 16px; cursor: pointer; }
+
+.daily-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--card); overflow: hidden; }
+.daily-section.is-implicit { background: transparent; border-color: transparent; box-shadow: none; }
+.daily-section-head { display: flex; align-items: center; gap: 10px; padding: 13px 15px; border-bottom: 1px solid var(--border); }
+.daily-section.is-implicit .daily-section-head { padding-left: 6px; padding-right: 6px; }
+.ds-collapse { border: none; background: transparent; color: var(--faint); cursor: pointer; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 6px; font-size: 12px; flex-shrink: 0; transition: color .14s, background .14s; }
+.ds-collapse:hover { color: var(--text); background: var(--surface-2); }
+.ds-collapse-spacer { width: 6px; flex-shrink: 0; }
+.ds-name { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-name-input { font: inherit; font-size: 14px; font-weight: 700; color: var(--text); background: var(--bg-soft); border: 1px solid var(--brand); border-radius: 7px; padding: 4px 8px; outline: none; min-width: 0; flex: 1; }
+.ds-count { font-size: 11px; font-weight: 800; color: var(--muted); background: var(--bg-soft); border: 1px solid var(--border); padding: 1px 9px; border-radius: 999px; flex-shrink: 0; }
+.ds-actions { margin-left: auto; display: flex; gap: 2px; opacity: 0; transition: opacity .14s; }
+.daily-section-head:hover .ds-actions, .ds-actions:focus-within { opacity: 1; }
+.ds-act { width: 26px; height: 26px; display: grid; place-items: center; border: none; background: transparent; color: var(--faint); border-radius: 7px; cursor: pointer; font-size: 11px; transition: color .14s, background .14s; }
+.ds-act:hover { background: var(--surface-2); color: var(--text); }
+.ds-act.del:hover { color: var(--danger); }
+
+.daily-list { display: flex; flex-direction: column; padding: 6px; border-radius: 0 0 var(--radius) var(--radius); transition: background .14s; }
+.daily-list.drop-into { background: color-mix(in srgb, var(--brand) 7%, transparent); }
+
+.task-row { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: var(--radius-xs); border: 1px solid transparent; cursor: grab; transition: background .12s, box-shadow .12s; }
+.task-row:hover { background: var(--bg-soft); }
+.task-row.dragging { opacity: .5; }
+.task-row.drop-before { box-shadow: inset 0 2px 0 0 var(--brand); }
+.task-row:active { cursor: grabbing; }
+.task-check { flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; border: 1.6px solid var(--border-2); background: transparent; color: transparent; display: grid; place-items: center; cursor: pointer; font-size: 10px; transition: border-color .14s, background .14s, color .14s; }
+.task-check:hover { border-color: var(--termine); color: color-mix(in srgb, var(--termine) 55%, transparent); }
+.task-main { flex: 1; min-width: 0; cursor: pointer; }
+.task-title { font-size: 13.5px; font-weight: 500; color: var(--text); overflow-wrap: anywhere; }
+.task-meta { display: flex; align-items: center; gap: 9px; margin-top: 4px; }
+.task-prio { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.task-due { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--faint); }
+.task-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .14s; flex-shrink: 0; }
+.task-row:hover .task-actions { opacity: 1; }
+.task-act { width: 26px; height: 26px; display: grid; place-items: center; border: none; background: transparent; color: var(--faint); border-radius: 7px; cursor: pointer; font-size: 11px; transition: color .14s, background .14s; }
+.task-act:hover { background: var(--surface-2); color: var(--text); }
+.task-act.del:hover { color: var(--danger); }
+
+/* Tâche terminée : cercle plein + texte grisé, JAMAIS barré */
+.task-row.is-done .task-check { background: var(--termine); border-color: var(--termine); color: #fff; }
+.task-row.is-done .task-title { color: var(--faint); }
+
+.task-add { display: flex; align-items: center; gap: 11px; padding: 8px 10px; color: var(--faint); }
+.task-add > i { font-size: 11px; width: 20px; text-align: center; flex-shrink: 0; }
+.task-add-input { flex: 1; min-width: 0; border: none; background: transparent; font: inherit; font-size: 13.5px; color: var(--text); padding: 2px 0; outline: none; }
+.task-add-input::placeholder { color: var(--faint); }
+.task-add:focus-within { color: var(--brand); }
 
 /* ===================== CARTE MENTALE (radiale) ===================== */
 .mindmap-wrap { display: flex; justify-content: center; padding: 8px 4px 28px; overflow-x: auto; }
@@ -614,6 +687,11 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px;
     .view-inner { padding: 16px 14px calc(88px + env(safe-area-inset-bottom, 0px)); }
     .section-head { margin: 22px 0 14px; }
     .grid-2 { grid-template-columns: 1fr; }
+
+    /* Menu « Autres » en feuille au-dessus de la barre d'onglets */
+    .nav-menu.as-sheet { position: fixed; left: 12px; right: 12px; top: auto !important; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); min-width: 0; border-radius: 16px; padding: 8px; }
+    .nav-menu.as-sheet .nav-menu-item { padding: 13px 14px; font-size: 15px; }
+    .daily { max-width: 100%; }
 
     /* Actions de carte toujours visibles (pas de survol au tactile) */
     .cc-actions { opacity: 1; }

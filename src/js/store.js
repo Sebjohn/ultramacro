@@ -8,7 +8,7 @@
 
     var listeners = [];
     var store = {
-        data: { poles: {}, chantiers: {}, objectives: {} },
+        data: { poles: {}, chantiers: {}, objectives: {}, dailysections: {}, dailytasks: {} },
         ready: false
     };
 
@@ -21,7 +21,9 @@
         store.data = {
             poles: data && data.poles ? data.poles : {},
             chantiers: data && data.chantiers ? data.chantiers : {},
-            objectives: data && data.objectives ? data.objectives : {}
+            objectives: data && data.objectives ? data.objectives : {},
+            dailysections: data && data.dailysections ? data.dailysections : {},
+            dailytasks: data && data.dailytasks ? data.dailytasks : {}
         };
         store.ready = true;
         emit();
@@ -278,6 +280,108 @@
     };
     store.deleteObjective = function (id) { U.active.deleteObjective(id); };
 
+    /* --------- Daily tasks (liste « à la Asana » : sections + tâches) --------- */
+    store.dailySectionsArray = function () {
+        return Object.keys(store.data.dailysections).map(function (k) { return store.data.dailysections[k]; })
+            .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    };
+    store.dailySection = function (id) { return store.data.dailysections[id] || null; };
+    store.dailyTasksArray = function () {
+        return Object.keys(store.data.dailytasks).map(function (k) { return store.data.dailytasks[k]; });
+    };
+    store.dailyTask = function (id) { return store.data.dailytasks[id] || null; };
+
+    // Section effective d'une tâche : null si aucune ou si la section n'existe plus (orpheline).
+    function taskSection(t) {
+        return (t.section && store.data.dailysections[t.section]) ? t.section : null;
+    }
+    store.taskSection = taskSection;
+
+    // Tâches d'une section (sectionId null → tâches sans section / orphelines), triées par ordre.
+    store.dailyTasksOfSection = function (sectionId) {
+        var want = sectionId || null;
+        return store.dailyTasksArray()
+            .filter(function (t) { return taskSection(t) === want; })
+            .sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+    };
+    // Vrai s'il reste des tâches orphelines (sans section valide) à afficher dans le groupe implicite.
+    store.hasOrphanTasks = function () { return store.dailyTasksOfSection(null).length > 0; };
+
+    store.saveDailySection = function (input) {
+        var existing = input.id ? store.dailySection(input.id) : null;
+        var sec = {
+            id: input.id || ("sec_" + U.uid()),
+            name: (input.name || "").trim() || "Section",
+            order: existing ? existing.order : store.dailySectionsArray().length
+        };
+        U.active.upsertDailySection(sec);
+        return sec;
+    };
+    // Supprime une section sans perdre ses tâches : elles repassent « sans section ».
+    store.deleteDailySection = function (id) {
+        store.dailyTasksArray().forEach(function (t) {
+            if (t.section === id) U.active.upsertDailyTask(Object.assign({}, t, { section: null, updatedAt: nowISO() }));
+        });
+        U.active.deleteDailySection(id);
+    };
+
+    store.saveDailyTask = function (input) {
+        var existing = input.id ? store.dailyTask(input.id) : null;
+        var done = input.done != null ? !!input.done : (existing ? existing.done : false);
+        var section = (input.section && store.data.dailysections[input.section]) ? input.section
+            : (input.section === null ? null : (existing ? existing.section : null));
+        if (section && !store.data.dailysections[section]) section = null;
+        var completedAt = null;
+        if (done) completedAt = (existing && existing.completedAt) ? existing.completedAt : nowISO();
+        var task = {
+            id: input.id || ("task_" + U.uid()),
+            title: (input.title || "").trim(),
+            section: section || null,
+            done: done,
+            priority: U.PRIORITIES[input.priority] ? input.priority : null,
+            due: input.due || null,
+            notes: (input.notes || "").trim() || null,
+            order: existing ? existing.order : Date.now(),
+            createdAt: existing ? existing.createdAt : nowISO(),
+            updatedAt: nowISO(),
+            completedAt: completedAt
+        };
+        if (!task.title) return null;
+        U.active.upsertDailyTask(task);
+        return task;
+    };
+
+    store.setDailyTaskDone = function (id, done) {
+        var t = store.dailyTask(id); if (!t) return;
+        var updated = Object.assign({}, t, { done: !!done, updatedAt: nowISO() });
+        updated.completedAt = done ? ((t.done && t.completedAt) ? t.completedAt : nowISO()) : null;
+        U.active.upsertDailyTask(updated);
+    };
+
+    store.deleteDailyTask = function (id) { U.active.deleteDailyTask(id); };
+
+    // Réordonne / déplace une tâche : la pose juste avant targetId (ou en fin de sectionId),
+    // puis réattribue les 'order' de la section de destination.
+    store.moveDailyTask = function (draggedId, targetId, sectionId) {
+        var dragged = store.dailyTask(draggedId); if (!dragged) return;
+        var secId = sectionId || null;
+        var beforeId = null;
+        if (targetId && targetId !== draggedId) {
+            var t = store.dailyTask(targetId);
+            if (t) { secId = taskSection(t); beforeId = t.id; }
+        }
+        var list = store.dailyTasksOfSection(secId).filter(function (x) { return x.id !== draggedId; });
+        var idx = beforeId ? list.map(function (x) { return x.id; }).indexOf(beforeId) : list.length;
+        if (idx < 0) idx = list.length;
+        list.splice(idx, 0, dragged);
+        list.forEach(function (x, i) {
+            var newSection = secId || null;
+            if (x.order !== i || (x.section || null) !== newSection) {
+                U.active.upsertDailyTask(Object.assign({}, x, { order: i, section: newSection, updatedAt: nowISO() }));
+            }
+        });
+    };
+
     // Export brut de l'état courant.
     store.exportData = function () {
         return {
@@ -286,7 +390,9 @@
             exportedAt: nowISO(),
             poles: store.data.poles,
             chantiers: store.data.chantiers,
-            objectives: store.data.objectives
+            objectives: store.data.objectives,
+            dailysections: store.data.dailysections,
+            dailytasks: store.data.dailytasks
         };
     };
 

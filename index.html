@@ -44,14 +44,11 @@
             <button class="nav-pill is-active" data-nav="dashboard">
                 <i class="fa-solid fa-grip"></i><span>Vue d'ensemble</span>
             </button>
-            <button class="nav-pill" data-nav="kanban">
-                <i class="fa-solid fa-table-columns"></i><span>Kanban</span>
-            </button>
-            <button class="nav-pill" data-nav="mindmap">
-                <i class="fa-solid fa-sitemap"></i><span>Carte mentale</span>
-            </button>
             <button class="nav-pill" data-nav="calendar">
                 <i class="fa-regular fa-calendar"></i><span>Calendrier</span>
+            </button>
+            <button class="nav-pill nav-more-btn" id="moreBtn" type="button" aria-haspopup="true" aria-expanded="false" data-more>
+                <i class="fa-solid fa-ellipsis"></i><span>Autres</span><i class="fa-solid fa-chevron-down chev"></i>
             </button>
         </nav>
 
@@ -78,6 +75,13 @@
             </button>
         </div>
     </header>
+
+    <!-- Menu « Autres » (Kanban · Carte mentale · Daily tasks) — popover partagé desktop/mobile -->
+    <div class="nav-menu" id="moreMenu" role="menu" aria-label="Autres vues" hidden>
+        <button class="nav-menu-item" role="menuitem" data-nav="kanban"><i class="fa-solid fa-table-columns"></i> Kanban</button>
+        <button class="nav-menu-item" role="menuitem" data-nav="mindmap"><i class="fa-solid fa-sitemap"></i> Carte mentale</button>
+        <button class="nav-menu-item" role="menuitem" data-nav="daily"><i class="fa-solid fa-list-check"></i> Daily tasks</button>
+    </div>
 
     <!-- ============ MAIN ============ -->
     <main class="app-main" id="appMain">
@@ -170,13 +174,27 @@
                 <div class="timeline" id="timeline"></div>
             </div>
         </section>
+
+        <!-- VUE : DAILY TASKS (liste à la Asana) -->
+        <section id="view-daily" class="view">
+            <div class="view-inner">
+                <div class="section-head">
+                    <h2 class="section-title"><i class="fa-solid fa-list-check"></i> Daily tasks</h2>
+                    <div class="section-tools">
+                        <label class="daily-toggle"><input type="checkbox" id="dailyHideDone" /> <span>Masquer les tâches terminées</span></label>
+                        <button class="btn btn-ghost" id="dailyAddSection"><i class="fa-solid fa-folder-plus"></i><span>Section</span></button>
+                    </div>
+                </div>
+                <div class="daily" id="dailyBoard"></div>
+            </div>
+        </section>
     </main>
 
     <!-- BARRE D'ONGLETS MOBILE -->
     <nav class="mobile-tabbar" aria-label="Navigation">
         <button class="tab is-active" data-nav="dashboard"><i class="fa-solid fa-grip"></i><span>Vue</span></button>
-        <button class="tab" data-nav="kanban"><i class="fa-solid fa-table-columns"></i><span>Kanban</span></button>
         <button class="tab" data-nav="calendar"><i class="fa-regular fa-calendar"></i><span>Agenda</span></button>
+        <button class="tab tab-more" id="moreBtnMobile" type="button" data-more><i class="fa-solid fa-ellipsis"></i><span>Autres</span></button>
         <button class="tab tab-cta" data-action="new-chantier"><i class="fa-solid fa-circle-plus"></i><span>Chantier</span></button>
     </nav>
 
@@ -313,6 +331,52 @@
                     <button type="button" class="btn btn-danger-ghost" id="objectiveDelete" hidden><i class="fa-solid fa-trash"></i> Supprimer</button>
                     <div class="foot-right">
                         <button type="button" class="btn btn-ghost" data-close="objectiveModal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============ MODAL : TÂCHE (DAILY) ============ -->
+    <div class="modal-backdrop" id="dailyTaskModal" hidden>
+        <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="dailyTaskModalTitle">
+            <div class="modal-head">
+                <h3 id="dailyTaskModalTitle"><i class="fa-solid fa-list-check"></i> Nouvelle tâche</h3>
+                <button class="icon-btn" data-close="dailyTaskModal" aria-label="Fermer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="dailyTaskForm" class="modal-body">
+                <div class="field">
+                    <label for="fTaskTitle">Tâche <span class="req">*</span></label>
+                    <input type="text" id="fTaskTitle" required maxlength="200" placeholder="Ex : Rappeler le client" />
+                </div>
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="fTaskSection">Section</label>
+                        <select id="fTaskSection"></select>
+                    </div>
+                    <div class="field">
+                        <label for="fTaskPriority">Priorité</label>
+                        <select id="fTaskPriority"></select>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="field">
+                        <label for="fTaskDue"><i class="fa-regular fa-clock"></i> Échéance</label>
+                        <input type="date" id="fTaskDue" />
+                    </div>
+                    <div class="field">
+                        <label class="check-field" for="fTaskDone"><input type="checkbox" id="fTaskDone" /> <span>Terminée</span></label>
+                    </div>
+                </div>
+                <div class="field">
+                    <label for="fTaskNotes">Notes</label>
+                    <textarea id="fTaskNotes" rows="2" maxlength="500" placeholder="Détails, contexte…"></textarea>
+                </div>
+                <div class="modal-foot">
+                    <button type="button" class="btn btn-danger-ghost" id="dailyTaskDelete" hidden><i class="fa-solid fa-trash"></i> Supprimer</button>
+                    <div class="foot-right">
+                        <button type="button" class="btn btn-ghost" data-close="dailyTaskModal">Annuler</button>
                         <button type="submit" class="btn btn-primary">Enregistrer</button>
                     </div>
                 </div>

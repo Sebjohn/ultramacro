@@ -395,6 +395,112 @@
     };
 
     /* ============================================================
+       VUE DAILY TASKS (liste « à la Asana » : sections + tâches)
+       ============================================================ */
+    function matchesTask(t, q) {
+        if (!q) return true;
+        q = q.toLowerCase();
+        return (t.title || "").toLowerCase().indexOf(q) !== -1
+            || (t.notes || "").toLowerCase().indexOf(q) !== -1;
+    }
+
+    function taskRow(t) {
+        var prio = t.priority && P[t.priority] ? P[t.priority] : null;
+        var meta = "";
+        if (prio) meta += '<span class="task-prio" style="background:' + prio.color + '" title="Priorité ' + prio.label + '"></span>';
+        if (t.due) meta += '<span class="task-due"><i class="fa-regular fa-clock"></i> ' + U.escape(U.relativeLabel(t.due)) + "</span>";
+        var metaHTML = meta ? '<div class="task-meta">' + meta + "</div>" : "";
+        return '<div class="task-row' + (t.done ? " is-done" : "") + '" draggable="true" data-tid="' + t.id + '">' +
+            '<button class="task-check" data-act="toggle-task" data-tid="' + t.id + '" aria-label="' + (t.done ? "Rouvrir la tâche" : "Marquer terminée") + '"><i class="fa-solid fa-check"></i></button>' +
+            '<div class="task-main" data-act="edit-task" data-tid="' + t.id + '">' +
+                '<div class="task-title">' + U.escape(t.title) + "</div>" + metaHTML +
+            "</div>" +
+            '<div class="task-actions">' +
+                '<button class="task-act" data-act="edit-task" data-tid="' + t.id + '" title="Modifier"><i class="fa-solid fa-pen"></i></button>' +
+                '<button class="task-act del" data-act="del-task" data-tid="' + t.id + '" title="Supprimer"><i class="fa-solid fa-trash"></i></button>' +
+            "</div>" +
+        "</div>";
+    }
+
+    function sectionBlock(sec, isImplicit) {
+        var sid = isImplicit ? "" : sec.id;
+        var q = U.viewState.search;
+        var collapsed = !isImplicit && !!U.viewState.collapsedSections[sec.id];
+
+        var all = U.store.dailyTasksOfSection(sid || null);
+        var activeCount = all.filter(function (t) { return !t.done; }).length;
+
+        var tasks = all.filter(function (t) { return matchesTask(t, q); });
+        if (U.viewState.dailyHideDone) tasks = tasks.filter(function (t) { return !t.done; });
+        // Actives d'abord, terminées ensuite (texte normal, jamais barré) ; ordre conservé.
+        tasks.sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0) || (a.order || 0) - (b.order || 0); });
+
+        // En recherche : masquer les sections sans résultat (jamais le groupe implicite structurant).
+        if (q && !tasks.length && !isImplicit) return "";
+
+        var editing = !isImplicit && U.viewState.editingSection === sec.id;
+        var nameEl = editing
+            ? '<input class="ds-name-input" data-sid="' + sec.id + '" value="' + U.escape(sec.name) + '" maxlength="60" />'
+            : '<h3 class="ds-name">' + U.escape(isImplicit ? "Mes tâches" : sec.name) + "</h3>";
+        var collapseBtn = isImplicit
+            ? '<span class="ds-collapse-spacer"></span>'
+            : '<button class="ds-collapse" data-act="toggle-section" data-sid="' + sec.id + '" aria-label="Replier ou déplier"><i class="fa-solid fa-chevron-' + (collapsed ? "right" : "down") + '"></i></button>';
+        var actions = isImplicit ? "" :
+            '<div class="ds-actions">' +
+                '<button class="ds-act" data-act="rename-section" data-sid="' + sec.id + '" title="Renommer"><i class="fa-solid fa-pen"></i></button>' +
+                '<button class="ds-act del" data-act="del-section" data-sid="' + sec.id + '" title="Supprimer la section"><i class="fa-solid fa-trash"></i></button>' +
+            "</div>";
+        var head = '<div class="daily-section-head">' + collapseBtn + nameEl +
+            '<span class="ds-count">' + activeCount + "</span>" + actions + "</div>";
+
+        var body = "";
+        if (!collapsed) {
+            var rows = tasks.map(taskRow).join("");
+            var addRow = '<div class="task-add"><i class="fa-solid fa-plus"></i>' +
+                '<input class="task-add-input" data-sid="' + sid + '" maxlength="200" placeholder="Ajouter une tâche" /></div>';
+            body = '<div class="daily-list" data-sid="' + sid + '">' + rows + addRow + "</div>";
+        }
+        return '<div class="daily-section' + (isImplicit ? " is-implicit" : "") + '" data-sid="' + sid + '">' + head + body + "</div>";
+    }
+
+    views.renderDaily = function () {
+        var board = $("dailyBoard");
+        if (!board) return;
+        var sections = U.store.dailySectionsArray();
+        var showImplicit = (sections.length === 0) || U.store.hasOrphanTasks();
+        var html = "";
+        if (showImplicit) html += sectionBlock({ id: "", name: "Mes tâches" }, true);
+        sections.forEach(function (s) { html += sectionBlock(s, false); });
+        if (!html) html = '<div class="empty-state"><i class="fa-regular fa-square-check"></i><p>Aucune tâche ne correspond.</p></div>';
+        board.innerHTML = html;
+
+        // Rester dans le champ d'ajout après création d'une tâche (flux « taper, Entrée, continuer »).
+        if (U.viewState._focusAddSid !== undefined) {
+            var fs = U.viewState._focusAddSid; U.viewState._focusAddSid = undefined;
+            var ai = board.querySelector('.task-add-input[data-sid="' + (fs || "") + '"]');
+            if (ai) ai.focus();
+        }
+        // Garder le focus dans le champ de renommage de section pendant l'édition.
+        if (U.viewState.editingSection) {
+            var ei = board.querySelector('.ds-name-input[data-sid="' + U.viewState.editingSection + '"]');
+            if (ei && document.activeElement !== ei) { ei.focus(); ei.select(); }
+        }
+    };
+
+    // Validation / annulation du renommage d'une section (Entrée, Échap ou perte de focus).
+    function commitSectionRename(input, cancel) {
+        if (U.viewState.editingSection == null) return; // déjà traité
+        var sid = input.dataset.sid;
+        U.viewState.editingSection = null;
+        if (!cancel) {
+            var name = input.value.trim();
+            var sec = U.store.dailySection(sid);
+            if (sec && name && name !== sec.name) { U.store.saveDailySection({ id: sid, name: name }); return; }
+        }
+        views.renderDaily();
+    }
+
+    /* ============================================================
        Rendu global (appelé sur chaque changement du store)
        ============================================================ */
     views.render = function () {
@@ -404,12 +510,13 @@
         else if (v === "kanban") views.renderKanbanGlobal();
         else if (v === "mindmap") views.renderMindmap();
         else if (v === "calendar") views.renderTimeline();
+        else if (v === "daily") views.renderDaily();
     };
 
     /* --------- Délégation d'événements --------- */
     function actionFromEvent(e) {
         var el = e.target.closest("[data-act]");
-        return el ? { act: el.dataset.act, id: el.dataset.id, cid: el.dataset.cid, oid: el.dataset.oid } : null;
+        return el ? { act: el.dataset.act, id: el.dataset.id, cid: el.dataset.cid, oid: el.dataset.oid, tid: el.dataset.tid, sid: el.dataset.sid } : null;
     }
     function handleAction(e) {
         var a = actionFromEvent(e); if (!a) return;
@@ -419,6 +526,13 @@
         else if (a.act === "delete-chantier") { e.stopPropagation(); U.ui.deleteChantierFlow(a.cid); }
         else if (a.act === "edit-objective") U.ui.openObjective(a.oid);
         else if (a.act === "new-objective") U.ui.openObjective();
+        // --- Daily tasks ---
+        else if (a.act === "toggle-task") { var t = U.store.dailyTask(a.tid); if (t) U.store.setDailyTaskDone(a.tid, !t.done); }
+        else if (a.act === "edit-task") U.ui.openDailyTask(a.tid);
+        else if (a.act === "del-task") { e.stopPropagation(); U.ui.deleteDailyTaskFlow(a.tid); }
+        else if (a.act === "toggle-section") { var sid = a.sid; U.viewState.collapsedSections[sid] = !U.viewState.collapsedSections[sid]; views.renderDaily(); }
+        else if (a.act === "rename-section") { U.viewState.editingSection = a.sid; views.renderDaily(); }
+        else if (a.act === "del-section") U.ui.deleteDailySectionFlow(a.sid);
     }
 
     /* --------- Glisser-déposer Kanban (par pôle + général) --------- */
@@ -490,13 +604,75 @@
         });
     }
 
+    /* --------- Glisser-déposer Daily tasks (réordonner + changer de section) --------- */
+    var dragTask = null;
+    function clearDailyHints(board) {
+        board.querySelectorAll(".drop-before, .drop-into").forEach(function (c) { c.classList.remove("drop-before", "drop-into"); });
+    }
+    function bindDailyDnD(board) {
+        board.addEventListener("dragstart", function (e) {
+            var row = e.target.closest(".task-row"); if (!row) return;
+            dragTask = row.dataset.tid; row.classList.add("dragging");
+            e.dataTransfer.effectAllowed = "move";
+            try { e.dataTransfer.setData("text/plain", dragTask); } catch (err) {}
+        });
+        board.addEventListener("dragend", function () {
+            board.querySelectorAll(".dragging").forEach(function (c) { c.classList.remove("dragging"); });
+            clearDailyHints(board);
+            dragTask = null;
+        });
+        board.addEventListener("dragover", function (e) {
+            if (!dragTask) return;
+            var list = e.target.closest(".daily-list"); if (!list) return;
+            e.preventDefault(); e.dataTransfer.dropEffect = "move";
+            clearDailyHints(board);
+            var row = e.target.closest(".task-row");
+            if (row && row.dataset.tid !== dragTask) row.classList.add("drop-before");
+            else if (!row) list.classList.add("drop-into");
+        });
+        board.addEventListener("drop", function (e) {
+            if (!dragTask) return;
+            var list = e.target.closest(".daily-list"); if (!list) { dragTask = null; return; }
+            e.preventDefault();
+            var row = e.target.closest(".task-row");
+            var targetId = (row && row.dataset.tid !== dragTask) ? row.dataset.tid : null;
+            U.store.moveDailyTask(dragTask, targetId, list.dataset.sid || null);
+            clearDailyHints(board);
+            dragTask = null;
+        });
+    }
+
     views.init = function () {
-        ["polesGrid", "kanban", "kanbanGlobal", "timeline", "mindmap", "objectivesRow"].forEach(function (id) {
+        ["polesGrid", "kanban", "kanbanGlobal", "timeline", "mindmap", "objectivesRow", "dailyBoard"].forEach(function (id) {
             $(id).addEventListener("click", handleAction);
         });
         bindDnD($("kanban"));
         bindDnD($("kanbanGlobal"));
         bindPoleReorder($("polesGrid"));
+
+        // Daily tasks : ajout inline (Entrée), renommage de section (Entrée / Échap / blur), glisser-déposer.
+        var board = $("dailyBoard");
+        bindDailyDnD(board);
+        board.addEventListener("keydown", function (e) {
+            var el = e.target;
+            if (el.classList.contains("task-add-input")) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    var title = el.value.trim();
+                    if (title) {
+                        var sid = el.dataset.sid || null;
+                        U.viewState._focusAddSid = el.dataset.sid || "";
+                        U.store.saveDailyTask({ title: title, section: sid });
+                    }
+                }
+            } else if (el.classList.contains("ds-name-input")) {
+                if (e.key === "Enter") { e.preventDefault(); el.blur(); }
+                else if (e.key === "Escape") { e.preventDefault(); commitSectionRename(el, true); }
+            }
+        });
+        board.addEventListener("focusout", function (e) {
+            if (e.target.classList.contains("ds-name-input")) commitSectionRename(e.target, false);
+        });
     };
 
     U.views = views;

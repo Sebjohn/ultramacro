@@ -288,6 +288,66 @@
             .then(function (ok) { if (ok) { U.store.deleteObjective(id); ui.closeModal("objectiveModal"); ui.toast("Objectif supprimé", "info"); } });
     };
 
+    /* ===================== DAILY TASKS ===================== */
+    ui.openDailyTask = function (id) {
+        var editing = id ? U.store.dailyTask(id) : null;
+        var form = $("dailyTaskForm");
+        form.dataset.editing = editing ? editing.id : "";
+        $("dailyTaskModalTitle").innerHTML = editing
+            ? '<i class="fa-solid fa-list-check"></i> Modifier la tâche'
+            : '<i class="fa-solid fa-list-check"></i> Nouvelle tâche';
+
+        $("fTaskSection").innerHTML = '<option value="">Sans section</option>' +
+            U.store.dailySectionsArray().map(function (s) {
+                return '<option value="' + U.escape(s.id) + '">' + U.escape(s.name) + "</option>";
+            }).join("");
+        $("fTaskPriority").innerHTML = '<option value="">Aucune</option>' +
+            U.PRIORITY_ORDER.map(function (k) { return '<option value="' + k + '">' + U.PRIORITIES[k].label + "</option>"; }).join("");
+
+        $("fTaskTitle").value = editing ? editing.title : "";
+        $("fTaskSection").value = (editing && editing.section) ? editing.section : "";
+        $("fTaskPriority").value = (editing && editing.priority) ? editing.priority : "";
+        $("fTaskDue").value = (editing && editing.due) ? editing.due : "";
+        $("fTaskDone").checked = editing ? !!editing.done : false;
+        $("fTaskNotes").value = (editing && editing.notes) ? editing.notes : "";
+        $("dailyTaskDelete").hidden = !editing;
+        ui.openModal("dailyTaskModal");
+        setTimeout(function () { $("fTaskTitle").focus(); }, 30);
+    };
+
+    function submitDailyTask(e) {
+        e.preventDefault();
+        var id = $("dailyTaskForm").dataset.editing || null;
+        var res = U.store.saveDailyTask({
+            id: id,
+            title: $("fTaskTitle").value,
+            section: $("fTaskSection").value || null,
+            priority: $("fTaskPriority").value || null,
+            due: $("fTaskDue").value || null,
+            notes: $("fTaskNotes").value,
+            done: $("fTaskDone").checked
+        });
+        if (!res) { ui.toast("Le titre de la tâche est requis", "error"); return; }
+        ui.closeModal("dailyTaskModal");
+        ui.toast(id ? "Tâche mise à jour" : "Tâche créée", "success");
+    }
+
+    ui.deleteDailyTaskFlow = function (id) {
+        var t = U.store.dailyTask(id); if (!t) return;
+        ui.confirm('Supprimer la tâche « ' + t.title + " » ?", { title: "Supprimer la tâche", okLabel: "Supprimer" })
+            .then(function (ok) { if (ok) { U.store.deleteDailyTask(id); ui.closeModal("dailyTaskModal"); ui.toast("Tâche supprimée", "info"); } });
+    };
+
+    ui.deleteDailySectionFlow = function (id) {
+        var s = U.store.dailySection(id); if (!s) return;
+        var n = U.store.dailyTasksOfSection(id).length;
+        var msg = n
+            ? "Supprimer la section « " + s.name + " » ? Ses " + n + " tâche(s) repasseront « sans section »."
+            : "Supprimer la section « " + s.name + " » ?";
+        ui.confirm(msg, { title: "Supprimer la section", okLabel: "Supprimer" })
+            .then(function (ok) { if (ok) { U.store.deleteDailySection(id); ui.toast("Section supprimée", "info"); } });
+    };
+
     /* ===================== RÉGLAGES ===================== */
     // Liste des assignés (avec nb de chantiers + suppression)
     function renderAssignees() {
@@ -393,6 +453,10 @@
         $("objectiveForm").addEventListener("submit", submitObjective);
         $("objectiveDelete").addEventListener("click", function () {
             var id = $("objectiveForm").dataset.editing; if (id) ui.deleteObjectiveFlow(id);
+        });
+        $("dailyTaskForm").addEventListener("submit", submitDailyTask);
+        $("dailyTaskDelete").addEventListener("click", function () {
+            var id = $("dailyTaskForm").dataset.editing; if (id) ui.deleteDailyTaskFlow(id);
         });
         $("fProgress").addEventListener("input", function () { $("fProgressVal").textContent = this.value; });
         // Affiche le champ de saisie quand on choisit « Nouveau responsable… » (les deux listes).
