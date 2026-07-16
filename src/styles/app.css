@@ -264,7 +264,7 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
     background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
     padding: 20px; display: flex; flex-direction: column; position: relative; height: 100%; min-width: 0;
     box-shadow: var(--card); transition: border-color .16s, transform .16s, box-shadow .16s;
-    animation: fade .28s var(--ease);
+    animation: fade .28s var(--ease); cursor: pointer;
 }
 .pole-card:hover { border-color: var(--border-2); box-shadow: var(--shadow); }
 
@@ -303,9 +303,17 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 .prio-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .focus-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .focus-when { font-size: 11px; font-weight: 700; color: var(--faint); flex-shrink: 0; }
-.focus-when.late { color: var(--p-haute); }
-.focus-when.soon { color: var(--encours); }
+.focus-when.late, .focus-when.soon { color: var(--faint); }
 .focus-empty { font-size: 12.5px; color: var(--faint); padding: 9px 2px; display: flex; align-items: center; gap: 7px; }
+
+/* Catégorie « Terminé » sur la carte de pôle — grisée, 2 tâches les plus récentes */
+.pole-done-label { font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); margin: 14px 0 7px; }
+.pole-done { display: flex; flex-direction: column; gap: 5px; }
+.done-row { display: flex; align-items: center; gap: 9px; cursor: pointer; padding: 6px 10px; border-radius: var(--radius-xs); background: var(--bg-soft); border: 1px solid transparent; transition: border-color .14s; }
+.done-row:hover { border-color: var(--border-2); }
+.done-row > i { font-size: 10px; color: var(--faint); flex-shrink: 0; }
+.done-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 500; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--faint) 55%, transparent); }
+.done-when { font-size: 10.5px; font-weight: 600; color: var(--faint); flex-shrink: 0; }
 
 .pole-foot { margin-top: auto; padding-top: 16px; border-top: 1px solid var(--border); }
 .pole-stats-line { display: flex; gap: 4px; margin-bottom: 14px; }
@@ -369,9 +377,9 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 .cc-resp i { font-size: 11px; color: var(--faint); flex-shrink: 0; }
 .cc-resp span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .badge-date { font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 8px; border: 1px solid var(--border); color: var(--muted); background: var(--bg-soft); }
-.badge-date.late { color: var(--p-haute); border-color: color-mix(in srgb, var(--p-haute) 32%, transparent); background: color-mix(in srgb, var(--p-haute) 8%, transparent); }
-.badge-date.soon { color: var(--encours); border-color: color-mix(in srgb, var(--encours) 32%, transparent); background: color-mix(in srgb, var(--encours) 8%, transparent); }
-.badge-date.done { color: var(--termine); border-color: transparent; text-decoration: line-through; opacity: .7; }
+/* Échéances sans couleur : badges neutres quel que soit le délai */
+.badge-date.late, .badge-date.soon { color: var(--muted); border-color: var(--border); background: var(--bg-soft); }
+.badge-date.done { color: var(--muted); border-color: transparent; text-decoration: line-through; opacity: .7; }
 .cc-actions { display: flex; gap: 2px; opacity: 0; transition: opacity .14s; flex-shrink: 0; }
 .chantier-card:hover .cc-actions { opacity: 1; }
 .cc-act { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 7px; border: none; background: transparent; color: var(--faint); cursor: pointer; font-size: 11px; transition: color .14s, background .14s; }
@@ -414,6 +422,19 @@ h1,h2,h3,h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
 .tl-row.today { border-color: color-mix(in srgb, var(--brand) 45%, var(--border-2)); box-shadow: inset 3px 0 0 0 var(--brand); background: color-mix(in srgb, var(--brand) 6%, transparent); }
 .tl-row.today .tl-date .d { color: var(--brand); }
 .tl-today { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; padding: 4px 10px; border-radius: 999px; color: #fff; background: var(--brand); }
+
+/* Affichage particulier « En retard » */
+.tl-group.late .tl-group-head i { color: var(--p-haute); }
+.tl-group.late .cnt { color: var(--p-haute); border-color: color-mix(in srgb, var(--p-haute) 40%, transparent); }
+.tl-row.late { border-color: color-mix(in srgb, var(--p-haute) 42%, var(--border-2)); box-shadow: inset 3px 0 0 0 var(--p-haute); background: color-mix(in srgb, var(--p-haute) 5%, transparent); }
+.tl-row.late .tl-date .d { color: var(--p-haute); }
+.tl-late { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; padding: 4px 10px; border-radius: 999px; color: var(--p-haute); background: color-mix(in srgb, var(--p-haute) 14%, transparent); white-space: nowrap; }
+
+/* « Accompli » : présenté en gris, daté au jour d'accomplissement */
+.tl-group.done h3 { color: var(--muted); }
+.tl-group.done .tl-group-head i { color: var(--faint); }
+.tl-row.done { opacity: .72; }
+.tl-row.done .tl-name { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--faint) 55%, transparent); }
 
 /* ===================== CARTE MENTALE (radiale) ===================== */
 .mindmap-wrap { display: flex; justify-content: center; padding: 8px 4px 28px; overflow-x: auto; }

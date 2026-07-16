@@ -135,7 +135,15 @@
             var owner = p.defaultResponsable
                 ? '<div class="pole-owner" title="Assigné par défaut"><i class="fa-regular fa-user"></i>' + U.escape(p.defaultResponsable) + "</div>"
                 : "";
-            return '<div class="pole-card' + (manual ? " pole-drag" : "") + '" draggable="' + (manual ? "true" : "false") + '" data-pole="' + p.id + '" style="--pole:' + color + '">' +
+            var recent = U.store.poleRecentDone(p.id, 2);
+            var doneHTML = recent.length
+                ? '<div class="pole-done-label">Terminé</div><div class="pole-done">' + recent.map(function (c) {
+                    var dstr = String(U.store.doneDate(c)).slice(0, 10);
+                    var when = dstr ? '<span class="done-when">' + U.escape(U.formatShort(dstr)) + "</span>" : "";
+                    return '<div class="done-row" data-act="edit-chantier" data-cid="' + c.id + '"><i class="fa-solid fa-check"></i><span class="done-name">' + U.escape(c.nom) + "</span>" + when + "</div>";
+                }).join("") + "</div>"
+                : "";
+            return '<div class="pole-card' + (manual ? " pole-drag" : "") + '" draggable="' + (manual ? "true" : "false") + '" data-pole="' + p.id + '" data-act="open-pole" data-id="' + p.id + '" style="--pole:' + color + '">' +
                 (manual ? '<span class="pole-grip" title="Glisser pour réordonner"><i class="fa-solid fa-grip-vertical"></i></span>' : "") +
                 '<button class="icon-btn pole-gear" data-act="edit-pole" data-id="' + p.id + '" title="Configurer"><i class="fa-solid fa-gear"></i></button>' +
                 '<div class="pole-top">' +
@@ -145,6 +153,7 @@
                 "</div>" +
                 '<div class="pole-focus-label">Priorités</div>' +
                 '<div class="pole-focus">' + focusHTML + "</div>" +
+                doneHTML +
                 '<div class="pole-foot">' +
                     '<div class="pole-stats-line">' +
                         '<div class="mini-stat prevu"><div class="n">' + stats.prevu + '</div><div class="l">À venir</div></div>' +
@@ -231,38 +240,59 @@
     /* ============================================================
        VUE TIMELINE / ÉCHÉANCES
        ============================================================ */
+    // Métadonnées d'affichage des groupes (ordre + libellé + style).
     var GROUPS = [
-        { key: "late",  label: "En retard",     cls: "late",  test: function (n, st) { return st !== "termine" && n < 0; } },
-        { key: "today", label: "Aujourd'hui",   cls: "today", test: function (n, st) { return st !== "termine" && n === 0; } },
-        { key: "week",  label: "Cette semaine", cls: "",      test: function (n, st) { return st !== "termine" && n >= 1 && n <= 7; } },
-        { key: "month", label: "Ce mois-ci",    cls: "",      test: function (n, st) { return st !== "termine" && n > 7 && n <= 31; } },
-        { key: "later", label: "Plus tard",     cls: "",      test: function (n, st) { return st !== "termine" && n > 31; } },
-        { key: "done",  label: "Terminés",      cls: "",      test: function (n, st) { return st === "termine"; } }
+        { key: "late",  label: "En retard",     cls: "late" },
+        { key: "today", label: "Aujourd'hui",   cls: "today" },
+        { key: "week",  label: "Cette semaine", cls: "" },
+        { key: "month", label: "Ce mois-ci",    cls: "" },
+        { key: "later", label: "Plus tard",     cls: "" },
+        { key: "done",  label: "Accompli",      cls: "done" }
     ];
+
+    // Date de référence dans le calendrier : accomplissement pour un terminé, échéance sinon.
+    function calRefDate(c) {
+        return c.statut === "termine" ? String(U.store.doneDate(c)).slice(0, 10) : c.deadline;
+    }
+    function calGroup(c) {
+        if (c.statut === "termine") return "done";
+        var n = U.daysUntil(c.deadline);
+        if (n < 0) return "late";
+        if (n === 0) return "today";
+        if (n <= 7) return "week";
+        if (n <= 31) return "month";
+        return "later";
+    }
 
     views.renderTimeline = function () {
         var q = U.viewState.search;
         var filter = U.viewState.calFilter;
         var list = U.store.chantiersArray().filter(function (c) {
-            return c.deadline && matches(c, q) && (filter !== "active" || c.statut !== "termine");
+            if (!matches(c, q)) return false;
+            if (c.statut === "termine") return filter !== "active" && !!calRefDate(c); // accomplis : uniquement en vue « Toutes »
+            return !!c.deadline; // en cours / à venir : nécessitent une échéance
         });
 
         var buckets = {};
         list.forEach(function (c) {
-            var n = U.daysUntil(c.deadline);
-            var g = GROUPS.find(function (grp) { return grp.test(n, c.statut); });
-            if (!g) return;
-            (buckets[g.key] = buckets[g.key] || []).push(c);
+            var g = calGroup(c);
+            (buckets[g] = buckets[g] || []).push(c);
         });
 
         var html = GROUPS.map(function (g) {
             if (filter === "active" && g.key === "done") return "";
             var items = buckets[g.key];
             if (!items || !items.length) return "";
-            items.sort(function (a, b) { return U.daysUntil(a.deadline) - U.daysUntil(b.deadline); });
+            if (g.key === "done") {
+                items.sort(function (a, b) { return String(calRefDate(b)).localeCompare(String(calRefDate(a))); }); // plus récents d'abord
+            } else {
+                items.sort(function (a, b) { return U.daysUntil(a.deadline) - U.daysUntil(b.deadline); });
+            }
             var rows = items.map(timelineRow).join("");
-            var head = (g.key === "today" ? '<i class="fa-solid fa-calendar-day"></i> ' : "") + g.label;
-            return '<div class="tl-group ' + g.cls + '"><div class="tl-group-head"><h3>' + head +
+            var icon = g.key === "today" ? '<i class="fa-solid fa-calendar-day"></i> '
+                : g.key === "late" ? '<i class="fa-solid fa-triangle-exclamation"></i> '
+                : g.key === "done" ? '<i class="fa-solid fa-check-double"></i> ' : "";
+            return '<div class="tl-group ' + g.cls + '"><div class="tl-group-head"><h3>' + icon + g.label +
                 '</h3><span class="cnt">' + items.length + "</span></div>" +
                 '<div class="tl-list">' + rows + "</div></div>";
         }).join("");
@@ -271,19 +301,30 @@
     };
 
     function timelineRow(c) {
-        var d = U.parseDate(c.deadline);
+        var isDone = c.statut === "termine";
+        var dateStr = calRefDate(c);
+        var d = U.parseDate(dateStr) || U.parseDate((c.deadline || "").slice(0, 10)) || new Date();
         var pole = U.store.pole(c.pole);
         var color = pole ? U.themeColor(pole.theme) : "var(--faint)";
         var st = S[c.statut];
-        var isToday = U.daysUntil(c.deadline) === 0 && c.statut !== "termine";
-        return '<div class="tl-row' + (isToday ? " today" : "") + '" data-act="edit-chantier" data-cid="' + c.id + '">' +
+        var n = isDone ? null : U.daysUntil(c.deadline);
+        var isToday = n === 0;
+        var isLate = n !== null && n < 0;
+        var rowCls = isDone ? " done" : (isToday ? " today" : (isLate ? " late" : ""));
+        var when = isDone
+            ? "Accompli le " + U.escape(U.formatShort(dateStr))
+            : U.escape(U.relativeLabel(c.deadline));
+        var right = isLate
+            ? '<span class="tl-late">En retard de ' + Math.abs(n) + " j</span>"
+            : (isToday ? '<span class="tl-today">Aujourd\'hui</span>' : "");
+        return '<div class="tl-row' + rowCls + '" data-act="edit-chantier" data-cid="' + c.id + '">' +
             '<div class="tl-date"><div class="d">' + d.getDate() + '</div><div class="m">' + d.toLocaleDateString("fr-FR", { month: "short" }) + "</div></div>" +
             '<div class="tl-bar" style="background:' + color + '"></div>' +
             '<div class="tl-main"><div class="tl-name">' + U.escape(c.nom) + "</div>" +
                 '<div class="tl-sub">' + (pole ? '<span class="tl-pole-tag" style="--pole:' + color + '"><i class="fa-solid fa-' + U.escape(pole.icon) + '"></i>' + U.escape(pole.name) + "</span>" : "") +
                 (c.responsable ? "<span>· " + U.escape(c.responsable) + "</span>" : "") +
-                "<span>· " + U.escape(U.relativeLabel(c.deadline)) + "</span></div></div>" +
-            '<div class="tl-right">' + (isToday ? '<span class="tl-today">Aujourd\'hui</span>' : "") +
+                "<span>· " + when + "</span></div></div>" +
+            '<div class="tl-right">' + right +
                 '<span class="tl-status ' + c.statut + '">' + st.label + "</span></div></div>";
     }
 

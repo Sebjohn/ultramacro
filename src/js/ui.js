@@ -258,14 +258,11 @@
             ? '<i class="fa-solid fa-bullseye"></i> Modifier l\'objectif'
             : '<i class="fa-solid fa-bullseye"></i> Nouvel objectif';
         var target = editing ? editing.target : 10;
-        var current = editing ? Math.min(editing.current, target) : 0;
+        var current = editing ? editing.current : 0;
         $("fObjLabel").value = editing ? editing.label : "";
         $("fObjPeriod").value = editing ? editing.period : "month";
         $("fObjTarget").value = target;
-        var range = $("fObjCurrent");
-        range.max = target; range.value = current;
-        $("fObjTargetVal").textContent = target;
-        $("fObjCurrentVal").textContent = current;
+        $("fObjCurrent").value = current;
         $("objectiveDelete").hidden = !editing;
         ui.openModal("objectiveModal");
     };
@@ -397,15 +394,6 @@
         $("objectiveDelete").addEventListener("click", function () {
             var id = $("objectiveForm").dataset.editing; if (id) ui.deleteObjectiveFlow(id);
         });
-        $("fObjTarget").addEventListener("input", function () {
-            var t = Math.max(1, Math.round(Number(this.value) || 1));
-            var range = $("fObjCurrent");
-            range.max = t;
-            if (Number(range.value) > t) range.value = t;
-            $("fObjTargetVal").textContent = t;
-            $("fObjCurrentVal").textContent = range.value;
-        });
-        $("fObjCurrent").addEventListener("input", function () { $("fObjCurrentVal").textContent = this.value; });
         $("fProgress").addEventListener("input", function () { $("fProgressVal").textContent = this.value; });
         // Affiche le champ de saisie quand on choisit « Nouveau responsable… » (les deux listes).
         ["fRespSelect", "fPoleRespSelect"].forEach(function (selId) {

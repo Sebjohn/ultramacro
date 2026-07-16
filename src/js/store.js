@@ -148,6 +148,16 @@
         return limit ? sorted.slice(0, limit) : sorted;
     };
 
+    // Date d'accomplissement (repli sur updatedAt/createdAt pour les anciens chantiers).
+    store.doneDate = function (c) { return c.completedAt || c.updatedAt || c.createdAt || ""; };
+
+    // Chantiers terminés d'un pôle, les plus récemment accomplis d'abord.
+    store.poleRecentDone = function (poleId, limit) {
+        var done = store.chantiersOfPole(poleId).filter(function (c) { return c.statut === "termine"; });
+        done.sort(function (a, b) { return String(store.doneDate(b)).localeCompare(String(store.doneDate(a))); });
+        return limit ? done.slice(0, limit) : done;
+    };
+
     // Échéances à venir (bandeau) — non terminées, datées, triées par date.
     store.upcomingDeadlines = function (limit) {
         var list = store.chantiersArray().filter(function (c) {
@@ -167,16 +177,21 @@
         // Le responsable par défaut du pôle est pré-rempli par le formulaire (ui.openChantier),
         // donc surchargeable : si l'utilisateur choisit « Non assigné », on le respecte.
         var responsable = (input.responsable || "").trim() || null;
+        var statut = U.STATUSES[input.statut] ? input.statut : "prevu";
+        // Date d'accomplissement : posée au passage en « terminé », conservée si déjà présente, effacée sinon.
+        var completedAt = null;
+        if (statut === "termine") completedAt = (existing && existing.completedAt) ? existing.completedAt : nowISO();
         var chantier = {
             id: input.id || U.uid(),
             nom: (input.nom || "").trim(),
             pole: input.pole,
-            statut: U.STATUSES[input.statut] ? input.statut : "prevu",
+            statut: statut,
             priorite: U.PRIORITIES[input.priorite] ? input.priorite : U.DEFAULT_PRIORITY,
             responsable: responsable,
             deadline: input.deadline || null,
             progression: U.clamp(Number(input.progression) || 0, 0, 100),
             notes: (input.notes || "").trim() || null,
+            completedAt: completedAt,
             createdAt: existing ? existing.createdAt : nowISO(),
             updatedAt: nowISO(),
             order: existing ? existing.order : Date.now()
@@ -190,7 +205,12 @@
         var c = store.chantier(id);
         if (!c || !U.STATUSES[statut]) return;
         var updated = Object.assign({}, c, { statut: statut, updatedAt: nowISO() });
-        if (statut === "termine" && (!updated.progression || updated.progression < 100)) updated.progression = 100;
+        if (statut === "termine") {
+            if (!updated.progression || updated.progression < 100) updated.progression = 100;
+            if (c.statut !== "termine" || !c.completedAt) updated.completedAt = nowISO();
+        } else {
+            updated.completedAt = null;
+        }
         U.active.upsertChantier(updated);
     };
 
@@ -237,14 +257,19 @@
     };
     store.objective = function (id) { return store.data.objectives[id] || null; };
 
+    // Arrondi à 2 décimales (évite le bruit des flottants) tout en autorisant les décimales.
+    function dec2(v) { return Math.round((Number(v) || 0) * 100) / 100; }
+
     store.saveObjective = function (input) {
         var existing = input.id ? store.objective(input.id) : null;
+        var t = dec2(input.target); if (!(t > 0)) t = 1;
+        var cu = dec2(input.current); if (!(cu >= 0)) cu = 0;
         var obj = {
             id: input.id || ("obj_" + U.uid()),
             label: (input.label || "").trim(),
             period: input.period === "week" ? "week" : "month",
-            target: Math.max(1, Math.round(Number(input.target) || 1)),
-            current: Math.max(0, Math.round(Number(input.current) || 0)),
+            target: t,
+            current: cu,
             order: existing ? existing.order : store.objectivesArray().length
         };
         if (!obj.label) return null;

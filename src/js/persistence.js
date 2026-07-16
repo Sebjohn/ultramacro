@@ -52,20 +52,25 @@
             deadline: c.deadline || null,
             progression: U.clamp(Number(c.progression) || 0, 0, 100),
             notes: c.notes || null,
+            completedAt: c.completedAt || null,
             createdAt: c.createdAt || now,
             updatedAt: c.updatedAt || now,
             order: (typeof c.order === "number") ? c.order : (i || 0)
         };
     }
 
+    function dec2(v) { return Math.round((Number(v) || 0) * 100) / 100; }
+
     function normObjective(o, i) {
         var id = sanitizeKey(o.id != null ? o.id : ("obj_" + U.uid()));
+        var t = dec2(o.target); if (!(t > 0)) t = 1;
+        var cu = dec2(o.current); if (!(cu >= 0)) cu = 0;
         return {
             id: id,
             label: (o.label || "Objectif").toString(),
             period: o.period === "week" ? "week" : "month",
-            target: Math.max(1, Math.round(Number(o.target) || 1)),
-            current: Math.max(0, Math.round(Number(o.current) || 0)),
+            target: t,
+            current: cu,
             order: (typeof o.order === "number") ? o.order : (i || 0)
         };
     }

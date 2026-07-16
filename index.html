@@ -301,12 +301,13 @@
                     </div>
                     <div class="field">
                         <label for="fObjTarget">Cible</label>
-                        <input type="number" id="fObjTarget" min="1" step="1" value="10" />
+                        <input type="number" id="fObjTarget" min="0" step="any" value="10" />
                     </div>
                 </div>
                 <div class="field">
-                    <label for="fObjCurrent">Avancement — <span id="fObjCurrentVal">0</span> / <span id="fObjTargetVal">10</span></label>
-                    <input type="range" id="fObjCurrent" min="0" max="10" step="1" value="0" />
+                    <label for="fObjCurrent">Avancement réalisé (décimales autorisées)</label>
+                    <input type="number" id="fObjCurrent" min="0" step="any" value="0" />
+                    <span class="obj-hint muted small" id="fObjCurrentVal" hidden></span><span id="fObjTargetVal" hidden></span>
                 </div>
                 <div class="modal-foot">
                     <button type="button" class="btn btn-danger-ghost" id="objectiveDelete" hidden><i class="fa-solid fa-trash"></i> Supprimer</button>
