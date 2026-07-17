@@ -418,9 +418,8 @@
     function taskRow(t, draggable) {
         var prio = t.priority && P[t.priority] ? P[t.priority] : null;
         var meta = "";
-        if (prio) meta += '<span class="task-prio" style="background:' + prio.color + '" title="Priorité ' + prio.label + '"></span>';
         if (t.due) meta += '<span class="task-due"><i class="fa-regular fa-clock"></i> ' + U.escape(U.relativeLabel(t.due)) + "</span>";
-        if (t.assignee) meta += '<span class="task-assignee"><i class="fa-regular fa-user"></i> ' + U.escape(t.assignee) + "</span>";
+        if (t.assignee) meta += '<span class="task-assignee" title="' + U.escape(t.assignee) + '"><span class="task-ava">' + U.escape(U.initials(t.assignee)) + "</span>" + U.escape(t.assignee) + "</span>";
         if (t.chantier) {
             var ch = U.store.chantier(t.chantier);
             if (ch) {
@@ -430,10 +429,12 @@
             }
         }
         var metaHTML = meta ? '<div class="task-meta">' + meta + "</div>" : "";
-        return '<div class="task-row' + (t.done ? " is-done" : "") + '"' + (draggable ? ' draggable="true"' : "") + ' data-tid="' + t.id + '">' +
+        var accent = prio ? ' style="border-left-color:' + prio.color + '"' : "";
+        var prioTitle = prio ? ' title="Priorité ' + prio.label + '"' : "";
+        return '<div class="task-row' + (t.done ? " is-done" : "") + (prio ? " has-prio" : "") + '"' + accent + (draggable ? ' draggable="true"' : "") + ' data-tid="' + t.id + '"' + prioTitle + ">" +
             '<button class="task-check" data-act="toggle-task" data-tid="' + t.id + '" aria-label="' + (t.done ? "Rouvrir la tâche" : "Marquer terminée") + '"><i class="fa-solid fa-check"></i></button>' +
-            '<div class="task-main" data-act="edit-task" data-tid="' + t.id + '">' +
-                '<div class="task-title">' + U.escape(t.title) + "</div>" + metaHTML +
+            '<div class="task-body" data-act="edit-task" data-tid="' + t.id + '">' +
+                '<span class="task-title">' + U.escape(t.title) + "</span>" + metaHTML +
             "</div>" +
             '<div class="task-actions">' +
                 '<button class="task-act" data-act="edit-task" data-tid="' + t.id + '" title="Modifier"><i class="fa-solid fa-pen"></i></button>' +
@@ -615,6 +616,23 @@
         }
     };
 
+    // Crée une tâche à partir d'une ligne de saisie rapide (Entrée depuis n'importe quel champ).
+    function createFromQuickRow(row) {
+        var title = row.querySelector(".qa-name").value.trim();
+        if (!title) { row.querySelector(".qa-name").focus(); return; }
+        var key = row.dataset.sid || "";
+        var prio = row.querySelector(".qa-priority").value || null;
+        var assignee = row.querySelector(".qa-assignee").value || null;
+        var chantier = row.querySelector(".qa-chantier").value || null;
+        U.viewState.quickAdd[key] = { priority: prio, assignee: assignee, chantier: chantier }; // champs « collants »
+        U.viewState._focusAddSid = key;
+        U.store.saveDailyTask({
+            title: title, section: (row.dataset.sid || null),
+            priority: prio, due: row.querySelector(".qa-due").value || null,
+            assignee: assignee, chantier: chantier
+        });
+    }
+
     // Validation / annulation du renommage d'une section (Entrée, Échap ou perte de focus).
     function commitSectionRename(input, cancel) {
         if (U.viewState.editingSection == null) return; // déjà traité
@@ -783,25 +801,10 @@
         bindDailyDnD(board);
         board.addEventListener("keydown", function (e) {
             var el = e.target;
-            if (el.classList.contains("qa-name")) {
-                if (e.key === "Enter") {
-                    e.preventDefault();
-                    var row = el.closest(".qa-row"); if (!row) return;
-                    var title = row.querySelector(".qa-name").value.trim();
-                    if (!title) return;
-                    var key = row.dataset.sid || "";
-                    var prio = row.querySelector(".qa-priority").value || null;
-                    var assignee = row.querySelector(".qa-assignee").value || null;
-                    var chantier = row.querySelector(".qa-chantier").value || null;
-                    // Mémorise les champs « collants » pour enchaîner les saisies.
-                    U.viewState.quickAdd[key] = { priority: prio, assignee: assignee, chantier: chantier };
-                    U.viewState._focusAddSid = key;
-                    U.store.saveDailyTask({
-                        title: title, section: (row.dataset.sid || null),
-                        priority: prio, due: row.querySelector(".qa-due").value || null,
-                        assignee: assignee, chantier: chantier
-                    });
-                }
+            var qaRow = el.closest ? el.closest(".qa-row") : null;
+            if (qaRow) {
+                // Entrée valide la tâche depuis N'IMPORTE quel champ de la ligne (pas seulement le titre).
+                if (e.key === "Enter") { e.preventDefault(); createFromQuickRow(qaRow); }
             } else if (el.classList.contains("ds-name-input")) {
                 if (e.key === "Enter") { e.preventDefault(); el.blur(); }
                 else if (e.key === "Escape") { e.preventDefault(); commitSectionRename(el, true); }
