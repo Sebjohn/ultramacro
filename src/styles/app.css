@@ -567,7 +567,28 @@ input.qa-due { width: 146px; color: var(--muted); }
 
 .contact-add { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
 .contact-add input { flex: 1 1 140px; width: auto; }
+.contact-add select { flex: 1 1 120px; width: auto; }
 .contact-add .btn { flex-shrink: 0; }
+
+/* Conversations (fils WhatsApp, bulles) */
+.conversations-list { display: flex; flex-direction: column; gap: 14px; max-width: 780px; }
+.cv-thread { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--card); overflow: hidden; animation: fade .22s var(--ease); }
+.cv-head { display: flex; align-items: center; gap: 10px; padding: 12px 15px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.cv-name { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; }
+.cv-name i { color: #25D366; }
+.cv-team { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; color: color-mix(in srgb, var(--pole, var(--muted)) 70%, var(--text)); background: color-mix(in srgb, var(--pole, var(--muted)) 12%, transparent); }
+.cv-team i { font-size: 9px; }
+.cv-phone { font-size: 11.5px; color: var(--faint); }
+.cv-head .task-act { margin-left: auto; opacity: 1; }
+.cv-msgs { padding: 14px 15px; display: flex; flex-direction: column; gap: 8px; }
+.cv-msg { display: flex; flex-direction: column; max-width: 82%; }
+.cv-msg.cv-in { align-self: flex-start; align-items: flex-start; }
+.cv-msg.cv-out { align-self: flex-end; align-items: flex-end; }
+.cv-bubble { font-size: 13px; line-height: 1.45; padding: 8px 12px; border-radius: 13px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.cv-in .cv-bubble { background: var(--bg-soft); color: var(--text); border-bottom-left-radius: 4px; }
+.cv-out .cv-bubble { background: var(--brand); color: #fff; border-bottom-right-radius: 4px; }
+.cv-action { font-size: 10.5px; font-weight: 600; color: var(--faint); margin-top: 3px; display: inline-flex; align-items: center; gap: 5px; }
+.cv-action i { color: var(--termine); }
 
 /* ===================== CARTE MENTALE (radiale) ===================== */
 .mindmap-wrap { display: flex; justify-content: center; padding: 8px 4px 28px; overflow-x: auto; }

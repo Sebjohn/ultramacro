@@ -743,6 +743,34 @@
             : '<div class="empty-state"><i class="fa-regular fa-file"></i><p>Aucun compte rendu pour le moment.</p></div>';
     };
 
+    /* ============================================================
+       VUE CONVERSATIONS (journal des échanges WhatsApp)
+       ============================================================ */
+    function conversationThreadCard(t) {
+        var msgs = t.messages.map(function (m) {
+            var cls = m.direction === "out" ? "cv-out" : "cv-in";
+            var action = m.action ? '<div class="cv-action"><i class="fa-solid fa-bolt"></i> ' + U.escape(m.action) + "</div>" : "";
+            return '<div class="cv-msg ' + cls + '"><div class="cv-bubble">' + U.escape(m.text) + "</div>" + action + "</div>";
+        }).join("");
+        var team = t.pole ? '<span class="cv-team" style="--pole:' + U.themeColor(t.pole.theme) + '"><i class="fa-solid fa-diagram-project"></i> ' + U.escape(t.pole.name) + "</span>" : "";
+        return '<div class="cv-thread" data-phone="' + U.escape(t.phone || "") + '">' +
+            '<div class="cv-head"><span class="cv-name"><i class="fa-brands fa-whatsapp"></i> ' + U.escape(t.name) + "</span>" + team +
+                '<span class="cv-phone">' + U.escape(t.phone || "") + "</span>" +
+                '<button class="task-act del" data-act="delete-thread" data-phone="' + U.escape(t.phone || "") + '" title="Supprimer le fil"><i class="fa-solid fa-trash"></i></button></div>' +
+            '<div class="cv-msgs">' + msgs + "</div>" +
+        "</div>";
+    }
+    views.renderConversations = function () {
+        var board = $("conversationsBoard"); if (!board) return;
+        var q = (U.viewState.search || "").toLowerCase();
+        var threads = U.store.conversationThreads().filter(function (t) {
+            return !q || (t.name || "").toLowerCase().indexOf(q) !== -1
+                || t.messages.some(function (m) { return (m.text || "").toLowerCase().indexOf(q) !== -1; });
+        });
+        board.innerHTML = threads.length ? threads.map(conversationThreadCard).join("")
+            : '<div class="empty-state"><i class="fa-brands fa-whatsapp"></i><p>Aucune conversation pour le moment.</p></div>';
+    };
+
     // Pastille de messages en attente (bouton « Autres » + entrée de menu).
     views.updateBadges = function () {
         var n = U.store.inboxPendingCount();
@@ -765,13 +793,14 @@
         else if (v === "daily") views.renderDaily();
         else if (v === "inbox") views.renderInbox();
         else if (v === "reports") views.renderReports();
+        else if (v === "conversations") views.renderConversations();
         views.updateBadges();
     };
 
     /* --------- Délégation d'événements --------- */
     function actionFromEvent(e) {
         var el = e.target.closest("[data-act]");
-        return el ? { act: el.dataset.act, id: el.dataset.id, cid: el.dataset.cid, oid: el.dataset.oid, tid: el.dataset.tid, sid: el.dataset.sid, mid: el.dataset.mid, rid: el.dataset.rid } : null;
+        return el ? { act: el.dataset.act, id: el.dataset.id, cid: el.dataset.cid, oid: el.dataset.oid, tid: el.dataset.tid, sid: el.dataset.sid, mid: el.dataset.mid, rid: el.dataset.rid, phone: el.dataset.phone } : null;
     }
     function handleAction(e) {
         var a = actionFromEvent(e); if (!a) return;
@@ -794,6 +823,7 @@
         else if (a.act === "reject-inbox") { U.store.setInboxStatus(a.mid, "rejected"); U.ui.toast("Message rejeté", "info"); }
         else if (a.act === "delete-inbox") U.store.deleteInboxItem(a.mid);
         else if (a.act === "delete-report") U.ui.deleteReportFlow(a.rid);
+        else if (a.act === "delete-thread") U.ui.deleteThreadFlow(a.phone);
     }
 
     /* --------- Glisser-déposer Kanban (par pôle + général) --------- */
@@ -904,7 +934,7 @@
     }
 
     views.init = function () {
-        ["polesGrid", "kanban", "kanbanGlobal", "timeline", "mindmap", "objectivesRow", "dailyBoard", "inboxBoard", "reportsBoard"].forEach(function (id) {
+        ["polesGrid", "kanban", "kanbanGlobal", "timeline", "mindmap", "objectivesRow", "dailyBoard", "inboxBoard", "reportsBoard", "conversationsBoard"].forEach(function (id) {
             $(id).addEventListener("click", handleAction);
         });
         bindDnD($("kanban"));

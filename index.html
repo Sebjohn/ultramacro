@@ -81,6 +81,7 @@
         <button class="nav-menu-item" role="menuitem" data-nav="daily"><i class="fa-solid fa-list-check"></i> Daily tasks</button>
         <button class="nav-menu-item" role="menuitem" data-nav="inbox"><i class="fa-solid fa-inbox"></i> Boîte de réception <span class="nav-badge" id="inboxBadgeItem" hidden></span></button>
         <button class="nav-menu-item" role="menuitem" data-nav="reports"><i class="fa-solid fa-file-lines"></i> Comptes rendus</button>
+        <button class="nav-menu-item" role="menuitem" data-nav="conversations"><i class="fa-brands fa-whatsapp"></i> Conversations</button>
         <button class="nav-menu-item" role="menuitem" data-nav="kanban"><i class="fa-solid fa-table-columns"></i> Kanban</button>
         <button class="nav-menu-item" role="menuitem" data-nav="mindmap"><i class="fa-solid fa-sitemap"></i> Carte mentale</button>
     </div>
@@ -224,6 +225,17 @@
                     <h2 class="section-title"><i class="fa-solid fa-file-lines"></i> Comptes rendus</h2>
                 </div>
                 <div class="reports-list" id="reportsBoard"></div>
+            </div>
+        </section>
+
+        <!-- VUE : CONVERSATIONS (journal des échanges WhatsApp) -->
+        <section id="view-conversations" class="view">
+            <div class="view-inner">
+                <div class="section-head">
+                    <h2 class="section-title"><i class="fa-brands fa-whatsapp"></i> Conversations</h2>
+                </div>
+                <p class="muted small section-hint">Historique des échanges WhatsApp avec Ultra Macro (questions, réponses, actions effectuées).</p>
+                <div class="conversations-list" id="conversationsBoard"></div>
             </div>
         </section>
     </main>
@@ -491,6 +503,7 @@
                     <form id="contactForm" class="contact-add">
                         <input type="text" id="fContactPhone" placeholder="+33 6 12 34 56 78" autocomplete="off" inputmode="tel" />
                         <input type="text" id="fContactName" placeholder="Nom de la personne" autocomplete="off" />
+                        <select id="fContactPole" aria-label="Équipe (pôle)"></select>
                         <button type="submit" class="btn btn-ghost"><i class="fa-solid fa-plus"></i> Ajouter</button>
                     </form>
                 </div>

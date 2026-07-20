@@ -8,7 +8,7 @@
 
     var listeners = [];
     var store = {
-        data: { poles: {}, chantiers: {}, objectives: {}, dailysections: {}, dailytasks: {}, inbox: {}, contacts: {}, reports: {} },
+        data: { poles: {}, chantiers: {}, objectives: {}, dailysections: {}, dailytasks: {}, inbox: {}, contacts: {}, reports: {}, conversations: {} },
         ready: false
     };
 
@@ -26,7 +26,8 @@
             dailytasks: data && data.dailytasks ? data.dailytasks : {},
             inbox: data && data.inbox ? data.inbox : {},
             contacts: data && data.contacts ? data.contacts : {},
-            reports: data && data.reports ? data.reports : {}
+            reports: data && data.reports ? data.reports : {},
+            conversations: data && data.conversations ? data.conversations : {}
         };
         store.ready = true;
         emit();
@@ -409,10 +410,12 @@
     };
     store.saveContact = function (input) {
         var existing = input.id ? store.data.contacts[input.id] : null;
+        var pole = (input.pole && store.data.poles[input.pole]) ? input.pole : null;
         var contact = {
             id: input.id || ("ct_" + U.uid()),
             phone: (input.phone || "").trim(),
             name: (input.name || "").trim(),
+            pole: pole,
             createdAt: existing ? existing.createdAt : nowISO()
         };
         if (!contact.phone || !contact.name) return null;
@@ -420,6 +423,8 @@
         return contact;
     };
     store.deleteContact = function (id) { U.active.deleteContact(id); };
+    // Équipe (pôle) associée à un numéro.
+    store.teamForPhone = function (phone) { var c = store.contactForPhone(phone); return (c && c.pole && store.data.poles[c.pole]) ? store.data.poles[c.pole] : null; };
 
     /* --------- Comptes rendus (synthèses IA) --------- */
     store.reportsArray = function () {
@@ -428,6 +433,35 @@
     };
     store.report = function (id) { return store.data.reports[id] || null; };
     store.deleteReport = function (id) { U.active.deleteReport(id); };
+
+    /* --------- Conversations WhatsApp (journal des échanges) --------- */
+    store.conversationsArray = function () {
+        return Object.keys(store.data.conversations).map(function (k) { return store.data.conversations[k]; })
+            .sort(function (a, b) { return String(a.at || "").localeCompare(String(b.at || "")); });
+    };
+    // Regroupe les messages par numéro (fil de discussion), fils les plus récents d'abord.
+    store.conversationThreads = function () {
+        var byPhone = {};
+        store.conversationsArray().forEach(function (m) {
+            var key = m.phone || m.id;
+            if (!byPhone[key]) byPhone[key] = { phone: m.phone, name: "", messages: [] };
+            byPhone[key].messages.push(m);
+            if (m.name && m.direction === "in") byPhone[key].name = m.name; // nom fourni par l'entrant
+        });
+        var threads = Object.keys(byPhone).map(function (k) {
+            var t = byPhone[k];
+            var contact = store.contactForPhone(t.phone);
+            t.name = (contact && contact.name) || t.name || t.phone || "Inconnu";
+            t.pole = (contact && contact.pole && store.data.poles[contact.pole]) ? store.data.poles[contact.pole] : null;
+            t.last = t.messages[t.messages.length - 1];
+            return t;
+        });
+        threads.sort(function (a, b) { return String((b.last || {}).at || "").localeCompare(String((a.last || {}).at || "")); });
+        return threads;
+    };
+    store.deleteConversationThread = function (phone) {
+        store.conversationsArray().forEach(function (m) { if ((m.phone || "") === phone) U.active.deleteConversation(m.id); });
+    };
 
     /* --------- Boîte de réception (messages WhatsApp interprétés par l'IA) --------- */
     store.inboxArray = function () {
@@ -506,7 +540,8 @@
             dailytasks: store.data.dailytasks,
             inbox: store.data.inbox,
             contacts: store.data.contacts,
-            reports: store.data.reports
+            reports: store.data.reports,
+            conversations: store.data.conversations
         };
     };
 

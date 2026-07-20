@@ -25,9 +25,9 @@
     };
 
     /* --------- Navigation --------- */
-    var TARGETS = { pole: "view-pole", kanban: "view-kanban", mindmap: "view-mindmap", calendar: "view-calendar", daily: "view-daily", inbox: "view-inbox", reports: "view-reports", dashboard: "view-dashboard" };
+    var TARGETS = { pole: "view-pole", kanban: "view-kanban", mindmap: "view-mindmap", calendar: "view-calendar", daily: "view-daily", inbox: "view-inbox", reports: "view-reports", conversations: "view-conversations", dashboard: "view-dashboard" };
     // Vues regroupées sous le menu « Autres ».
-    var MORE_VIEWS = { kanban: 1, mindmap: 1, daily: 1, inbox: 1, reports: 1 };
+    var MORE_VIEWS = { kanban: 1, mindmap: 1, daily: 1, inbox: 1, reports: 1, conversations: 1 };
 
     U.nav = function (view, param) {
         if (view === "pole") {

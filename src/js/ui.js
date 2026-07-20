@@ -390,6 +390,11 @@
             .then(function (ok) { if (ok) { U.store.deleteReport(id); ui.toast("Compte rendu supprimé", "info"); } });
     };
 
+    ui.deleteThreadFlow = function (phone) {
+        ui.confirm("Supprimer tout ce fil de conversation ?", { title: "Supprimer le fil", okLabel: "Supprimer" })
+            .then(function (ok) { if (ok) { U.store.deleteConversationThread(phone); ui.toast("Fil supprimé", "info"); } });
+    };
+
     ui.deleteDailyTaskFlow = function (id) {
         var t = U.store.dailyTask(id); if (!t) return;
         ui.confirm('Supprimer la tâche « ' + t.title + " » ?", { title: "Supprimer la tâche", okLabel: "Supprimer" })
@@ -423,15 +428,22 @@
         }).join("");
     }
 
-    // Liste des contacts WhatsApp (numéro → personne)
+    // Liste des contacts WhatsApp (numéro → personne + équipe)
     function renderContacts() {
         var el = $("contactsList"); if (!el) return;
+        // Remplit le sélecteur d'équipe (pôle) du formulaire d'ajout.
+        var sel = $("fContactPole");
+        if (sel) sel.innerHTML = '<option value="">Sans équipe</option>' + U.store.polesArray().map(function (p) {
+            return '<option value="' + U.escape(p.id) + '">' + U.escape(p.name) + "</option>";
+        }).join("");
         var list = U.store.contactsArray();
         if (!list.length) { el.innerHTML = '<p class="muted small">Aucun contact enregistré.</p>'; return; }
         el.innerHTML = list.map(function (c) {
+            var pole = c.pole ? U.store.pole(c.pole) : null;
+            var team = pole ? '<span class="assignee-count">' + U.escape(pole.name) + "</span>" : "";
             return '<div class="assignee-row">' +
                 '<span class="assignee-name">' + U.escape(c.name) + "</span>" +
-                '<span class="assignee-count">' + U.escape(c.phone) + "</span>" +
+                '<span class="assignee-count">' + U.escape(c.phone) + "</span>" + team +
                 '<button class="icon-btn assignee-del" data-cid="' + U.escape(c.id) + '" title="Supprimer le contact"><i class="fa-solid fa-trash"></i></button>' +
                 "</div>";
         }).join("");
@@ -456,9 +468,9 @@
         // Contacts WhatsApp : ajout + suppression
         $("contactForm").addEventListener("submit", function (e) {
             e.preventDefault();
-            var c = U.store.saveContact({ phone: $("fContactPhone").value, name: $("fContactName").value });
+            var c = U.store.saveContact({ phone: $("fContactPhone").value, name: $("fContactName").value, pole: $("fContactPole").value || null });
             if (!c) { ui.toast("Numéro et nom requis", "error"); return; }
-            $("fContactPhone").value = ""; $("fContactName").value = "";
+            $("fContactPhone").value = ""; $("fContactName").value = ""; $("fContactPole").value = "";
             renderContacts();
             ui.toast("Contact ajouté", "success");
         });
