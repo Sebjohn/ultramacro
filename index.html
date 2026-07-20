@@ -48,7 +48,7 @@
                 <i class="fa-regular fa-calendar"></i><span>Calendrier</span>
             </button>
             <button class="nav-pill nav-more-btn" id="moreBtn" type="button" aria-haspopup="true" aria-expanded="false" data-more>
-                <span>Autres</span><i class="fa-solid fa-chevron-down chev"></i>
+                <span>Autres</span><span class="nav-badge" id="inboxBadgeMore" hidden></span><i class="fa-solid fa-chevron-down chev"></i>
             </button>
         </nav>
 
@@ -78,9 +78,11 @@
 
     <!-- Menu « Autres » (Kanban · Carte mentale · Daily tasks) — popover partagé desktop/mobile -->
     <div class="nav-menu" id="moreMenu" role="menu" aria-label="Autres vues" hidden>
+        <button class="nav-menu-item" role="menuitem" data-nav="daily"><i class="fa-solid fa-list-check"></i> Daily tasks</button>
+        <button class="nav-menu-item" role="menuitem" data-nav="inbox"><i class="fa-solid fa-inbox"></i> Boîte de réception <span class="nav-badge" id="inboxBadgeItem" hidden></span></button>
+        <button class="nav-menu-item" role="menuitem" data-nav="reports"><i class="fa-solid fa-file-lines"></i> Comptes rendus</button>
         <button class="nav-menu-item" role="menuitem" data-nav="kanban"><i class="fa-solid fa-table-columns"></i> Kanban</button>
         <button class="nav-menu-item" role="menuitem" data-nav="mindmap"><i class="fa-solid fa-sitemap"></i> Carte mentale</button>
-        <button class="nav-menu-item" role="menuitem" data-nav="daily"><i class="fa-solid fa-list-check"></i> Daily tasks</button>
     </div>
 
     <!-- ============ MAIN ============ -->
@@ -197,6 +199,31 @@
                     </div>
                 </div>
                 <div class="daily" id="dailyBoard"></div>
+            </div>
+        </section>
+
+        <!-- VUE : BOÎTE DE RÉCEPTION (messages WhatsApp interprétés par l'IA) -->
+        <section id="view-inbox" class="view">
+            <div class="view-inner">
+                <div class="section-head">
+                    <h2 class="section-title"><i class="fa-solid fa-inbox"></i> Boîte de réception</h2>
+                    <div class="seg" id="inboxFilter" role="tablist" aria-label="Filtrer la boîte de réception">
+                        <button class="seg-btn is-active" data-inbox="pending">À valider</button>
+                        <button class="seg-btn" data-inbox="all">Tout</button>
+                    </div>
+                </div>
+                <p class="muted small section-hint">Messages reçus via WhatsApp et interprétés par l'IA. Validez, corrigez ou rejetez avant qu'ils ne modifient vos chantiers.</p>
+                <div class="inbox-list" id="inboxBoard"></div>
+            </div>
+        </section>
+
+        <!-- VUE : COMPTES RENDUS (synthèses IA) -->
+        <section id="view-reports" class="view">
+            <div class="view-inner">
+                <div class="section-head">
+                    <h2 class="section-title"><i class="fa-solid fa-file-lines"></i> Comptes rendus</h2>
+                </div>
+                <div class="reports-list" id="reportsBoard"></div>
             </div>
         </section>
     </main>
@@ -452,6 +479,20 @@
                     </div>
                     <div id="assigneesList" class="assignees-list"></div>
                     <p class="muted small">Retirer un assigné le désassigne de ses chantiers.</p>
+                </div>
+
+                <!-- Contacts WhatsApp -->
+                <div class="settings-block">
+                    <div class="settings-block-head">
+                        <h4><i class="fa-brands fa-whatsapp"></i> Contacts WhatsApp</h4>
+                    </div>
+                    <p class="muted small">Associez un numéro à une personne : les messages entrants seront reliés au bon assigné.</p>
+                    <div id="contactsList" class="assignees-list"></div>
+                    <form id="contactForm" class="contact-add">
+                        <input type="text" id="fContactPhone" placeholder="+33 6 12 34 56 78" autocomplete="off" inputmode="tel" />
+                        <input type="text" id="fContactName" placeholder="Nom de la personne" autocomplete="off" />
+                        <button type="submit" class="btn btn-ghost"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                    </form>
                 </div>
 
                 <!-- Données -->

@@ -647,6 +647,112 @@
     }
 
     /* ============================================================
+       VUE BOÎTE DE RÉCEPTION (messages WhatsApp interprétés par l'IA)
+       ============================================================ */
+    var INTENT_LABELS = { update_chantier: "Mise à jour", new_task: "Tâche", note: "Note", new_chantier: "Nouveau chantier", unknown: "À trier" };
+
+    function canAutoApply(m) {
+        var ai = m.ai || {};
+        if (ai.intent === "new_task") return true;
+        if ((ai.intent === "update_chantier" || ai.intent === "note") && ai.chantierId && U.store.chantier(ai.chantierId)) return true;
+        return false;
+    }
+    function inboxProposedText(m) {
+        var ai = m.ai || {}, p = ai.proposed || {};
+        var ch = ai.chantierId ? U.store.chantier(ai.chantierId) : null;
+        var bits = [];
+        if (ai.intent === "update_chantier") {
+            bits.push(ch ? "Chantier « " + U.escape(ch.nom) + " »" : "Chantier (non identifié)");
+            if (p.statut && S[p.statut]) bits.push("statut → " + S[p.statut].label);
+            if (p.progression != null) bits.push("avancement → " + U.escape(String(p.progression)) + "%");
+            if (p.deadline) bits.push("échéance → " + U.escape(U.formatShort(p.deadline)));
+            if (p.priority && P[p.priority]) bits.push("priorité → " + P[p.priority].label);
+        } else if (ai.intent === "new_task") {
+            bits.push("Nouvelle tâche : « " + U.escape(p.taskTitle || p.title || m.rawText || "") + " »");
+            if (ch) bits.push("chantier · " + U.escape(ch.nom));
+            if (p.deadline || p.due) bits.push("échéance → " + U.escape(U.formatShort(p.deadline || p.due)));
+        } else if (ai.intent === "note") {
+            bits.push(ch ? "Note sur « " + U.escape(ch.nom) + " »" : "Note (chantier non identifié)");
+        } else if (ai.intent === "new_chantier") {
+            bits.push("Nouveau chantier proposé — à compléter manuellement");
+        } else {
+            bits.push("Intention non reconnue — à traiter manuellement");
+        }
+        return bits.join(" · ");
+    }
+    function inboxCard(m) {
+        var ai = m.ai || {};
+        var status = m.status || "pending";
+        var conf = (typeof ai.confidence === "number") ? Math.round(ai.confidence * 100) + "%" : "";
+        var when = m.receivedAt ? U.formatShort(String(m.receivedAt).slice(0, 10)) : "";
+        var actions;
+        if (status === "pending") {
+            actions = (canAutoApply(m) ? '<button class="btn btn-primary btn-sm" data-act="apply-inbox" data-mid="' + m.id + '"><i class="fa-solid fa-check"></i> Appliquer</button>' : "") +
+                '<button class="btn btn-ghost btn-sm" data-act="modify-inbox" data-mid="' + m.id + '"><i class="fa-solid fa-pen"></i> Modifier</button>' +
+                '<button class="btn btn-ghost btn-sm" data-act="reject-inbox" data-mid="' + m.id + '"><i class="fa-solid fa-xmark"></i> Rejeter</button>';
+        } else {
+            actions = '<span class="inbox-status-tag">' + (status === "applied" ? "Appliqué" : "Rejeté") + "</span>" +
+                '<button class="task-act del" data-act="delete-inbox" data-mid="' + m.id + '" title="Supprimer"><i class="fa-solid fa-trash"></i></button>';
+        }
+        return '<div class="inbox-card status-' + status + '" data-mid="' + m.id + '">' +
+            '<div class="inbox-head">' +
+                '<span class="inbox-from"><i class="fa-brands fa-whatsapp"></i> ' + U.escape(U.store.inboxSenderName(m)) + "</span>" +
+                '<span class="inbox-intent">' + (INTENT_LABELS[ai.intent] || INTENT_LABELS.unknown) + "</span>" +
+                (conf ? '<span class="inbox-conf" title="Confiance de l\'IA">' + conf + "</span>" : "") +
+                '<span class="inbox-time">' + U.escape(when) + "</span>" +
+            "</div>" +
+            '<div class="inbox-raw">' + U.escape(m.rawText || "") + "</div>" +
+            '<div class="inbox-proposed"><i class="fa-solid fa-wand-magic-sparkles"></i> ' + inboxProposedText(m) + "</div>" +
+            '<div class="inbox-actions">' + actions + "</div>" +
+        "</div>";
+    }
+    views.renderInbox = function () {
+        var board = $("inboxBoard"); if (!board) return;
+        var filter = U.viewState.inboxFilter || "pending";
+        var q = (U.viewState.search || "").toLowerCase();
+        var list = U.store.inboxArray().filter(function (m) {
+            if (filter === "pending" && (m.status || "pending") !== "pending") return false;
+            if (q && (m.rawText || "").toLowerCase().indexOf(q) === -1 && U.store.inboxSenderName(m).toLowerCase().indexOf(q) === -1) return false;
+            return true;
+        });
+        board.innerHTML = list.length ? list.map(inboxCard).join("")
+            : '<div class="empty-state"><i class="fa-regular fa-envelope-open"></i><p>' + (filter === "pending" ? "Aucun message à valider." : "Boîte de réception vide.") + "</p></div>";
+    };
+
+    /* ============================================================
+       VUE COMPTES RENDUS
+       ============================================================ */
+    function reportCard(r) {
+        var periodLabel = r.period === "week" ? "Hebdomadaire" : "Journalier";
+        var d = r.date ? U.formatShort(r.date) : "";
+        return '<div class="report-card" data-rid="' + r.id + '">' +
+            '<div class="report-head"><span class="report-period">' + periodLabel + "</span>" +
+                '<span class="report-date">' + U.escape(d) + "</span>" +
+                '<button class="task-act del" data-act="delete-report" data-rid="' + r.id + '" title="Supprimer"><i class="fa-solid fa-trash"></i></button></div>' +
+            '<h3 class="report-title">' + U.escape(r.title || "") + "</h3>" +
+            '<div class="report-body">' + U.escape(r.body || "").replace(/\n/g, "<br>") + "</div>" +
+        "</div>";
+    }
+    views.renderReports = function () {
+        var board = $("reportsBoard"); if (!board) return;
+        var q = (U.viewState.search || "").toLowerCase();
+        var list = U.store.reportsArray().filter(function (r) {
+            return !q || (r.title || "").toLowerCase().indexOf(q) !== -1 || (r.body || "").toLowerCase().indexOf(q) !== -1;
+        });
+        board.innerHTML = list.length ? list.map(reportCard).join("")
+            : '<div class="empty-state"><i class="fa-regular fa-file"></i><p>Aucun compte rendu pour le moment.</p></div>';
+    };
+
+    // Pastille de messages en attente (bouton « Autres » + entrée de menu).
+    views.updateBadges = function () {
+        var n = U.store.inboxPendingCount();
+        ["inboxBadgeMore", "inboxBadgeItem"].forEach(function (id) {
+            var el = $(id); if (!el) return;
+            el.textContent = n; el.hidden = !n;
+        });
+    };
+
+    /* ============================================================
        Rendu global (appelé sur chaque changement du store)
        ============================================================ */
     views.render = function () {
@@ -657,12 +763,15 @@
         else if (v === "mindmap") views.renderMindmap();
         else if (v === "calendar") views.renderTimeline();
         else if (v === "daily") views.renderDaily();
+        else if (v === "inbox") views.renderInbox();
+        else if (v === "reports") views.renderReports();
+        views.updateBadges();
     };
 
     /* --------- Délégation d'événements --------- */
     function actionFromEvent(e) {
         var el = e.target.closest("[data-act]");
-        return el ? { act: el.dataset.act, id: el.dataset.id, cid: el.dataset.cid, oid: el.dataset.oid, tid: el.dataset.tid, sid: el.dataset.sid } : null;
+        return el ? { act: el.dataset.act, id: el.dataset.id, cid: el.dataset.cid, oid: el.dataset.oid, tid: el.dataset.tid, sid: el.dataset.sid, mid: el.dataset.mid, rid: el.dataset.rid } : null;
     }
     function handleAction(e) {
         var a = actionFromEvent(e); if (!a) return;
@@ -679,6 +788,12 @@
         else if (a.act === "toggle-section") { var sid = a.sid; U.viewState.collapsedSections[sid] = !U.viewState.collapsedSections[sid]; views.renderDaily(); }
         else if (a.act === "rename-section") { U.viewState.editingSection = a.sid; views.renderDaily(); }
         else if (a.act === "del-section") U.ui.deleteDailySectionFlow(a.sid);
+        // --- Boîte de réception / comptes rendus ---
+        else if (a.act === "apply-inbox") { var res = U.store.applyInboxItem(a.mid); U.ui.toast(res ? "Message appliqué" : "Impossible d'appliquer — utilisez « Modifier »", res ? "success" : "error"); }
+        else if (a.act === "modify-inbox") U.ui.reviewInboxModify(a.mid);
+        else if (a.act === "reject-inbox") { U.store.setInboxStatus(a.mid, "rejected"); U.ui.toast("Message rejeté", "info"); }
+        else if (a.act === "delete-inbox") U.store.deleteInboxItem(a.mid);
+        else if (a.act === "delete-report") U.ui.deleteReportFlow(a.rid);
     }
 
     /* --------- Glisser-déposer Kanban (par pôle + général) --------- */
@@ -789,7 +904,7 @@
     }
 
     views.init = function () {
-        ["polesGrid", "kanban", "kanbanGlobal", "timeline", "mindmap", "objectivesRow", "dailyBoard"].forEach(function (id) {
+        ["polesGrid", "kanban", "kanbanGlobal", "timeline", "mindmap", "objectivesRow", "dailyBoard", "inboxBoard", "reportsBoard"].forEach(function (id) {
             $(id).addEventListener("click", handleAction);
         });
         bindDnD($("kanban"));

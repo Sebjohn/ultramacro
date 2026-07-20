@@ -8,7 +8,7 @@
 
     var listeners = [];
     var store = {
-        data: { poles: {}, chantiers: {}, objectives: {}, dailysections: {}, dailytasks: {} },
+        data: { poles: {}, chantiers: {}, objectives: {}, dailysections: {}, dailytasks: {}, inbox: {}, contacts: {}, reports: {} },
         ready: false
     };
 
@@ -23,7 +23,10 @@
             chantiers: data && data.chantiers ? data.chantiers : {},
             objectives: data && data.objectives ? data.objectives : {},
             dailysections: data && data.dailysections ? data.dailysections : {},
-            dailytasks: data && data.dailytasks ? data.dailytasks : {}
+            dailytasks: data && data.dailytasks ? data.dailytasks : {},
+            inbox: data && data.inbox ? data.inbox : {},
+            contacts: data && data.contacts ? data.contacts : {},
+            reports: data && data.reports ? data.reports : {}
         };
         store.ready = true;
         emit();
@@ -69,6 +72,7 @@
         store.chantiersArray().forEach(function (c) { if (c.responsable) set[c.responsable] = true; });
         store.polesArray().forEach(function (p) { if (p.defaultResponsable) set[p.defaultResponsable] = true; });
         store.dailyTasksArray().forEach(function (t) { if (t.assignee) set[t.assignee] = true; });
+        store.contactsArray().forEach(function (c) { if (c.name) set[c.name] = true; });
         return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, "fr"); });
     };
 
@@ -391,6 +395,104 @@
         });
     };
 
+    /* --------- Contacts WhatsApp (numéro → personne) --------- */
+    store.contactsArray = function () {
+        return Object.keys(store.data.contacts).map(function (k) { return store.data.contacts[k]; })
+            .sort(function (a, b) { return (a.name || "").localeCompare(b.name || "", "fr"); });
+    };
+    function normPhone(p) { return String(p || "").replace(/[^\d+]/g, ""); }
+    store.contactForPhone = function (phone) {
+        if (!phone) return null;
+        var want = normPhone(phone), found = null;
+        store.contactsArray().forEach(function (c) { if (c.phone && normPhone(c.phone) === want) found = c; });
+        return found;
+    };
+    store.saveContact = function (input) {
+        var existing = input.id ? store.data.contacts[input.id] : null;
+        var contact = {
+            id: input.id || ("ct_" + U.uid()),
+            phone: (input.phone || "").trim(),
+            name: (input.name || "").trim(),
+            createdAt: existing ? existing.createdAt : nowISO()
+        };
+        if (!contact.phone || !contact.name) return null;
+        U.active.upsertContact(contact);
+        return contact;
+    };
+    store.deleteContact = function (id) { U.active.deleteContact(id); };
+
+    /* --------- Comptes rendus (synthèses IA) --------- */
+    store.reportsArray = function () {
+        return Object.keys(store.data.reports).map(function (k) { return store.data.reports[k]; })
+            .sort(function (a, b) { return String(b.date || b.createdAt || "").localeCompare(String(a.date || a.createdAt || "")); });
+    };
+    store.report = function (id) { return store.data.reports[id] || null; };
+    store.deleteReport = function (id) { U.active.deleteReport(id); };
+
+    /* --------- Boîte de réception (messages WhatsApp interprétés par l'IA) --------- */
+    store.inboxArray = function () {
+        return Object.keys(store.data.inbox).map(function (k) { return store.data.inbox[k]; })
+            .sort(function (a, b) { return String(b.receivedAt || b.createdAt || "").localeCompare(String(a.receivedAt || a.createdAt || "")); });
+    };
+    store.inboxItem = function (id) { return store.data.inbox[id] || null; };
+    store.inboxPending = function () { return store.inboxArray().filter(function (m) { return (m.status || "pending") === "pending"; }); };
+    store.inboxPendingCount = function () { return store.inboxPending().length; };
+    // Nom lisible de l'expéditeur (via les contacts, sinon nom brut, sinon numéro).
+    store.inboxSenderName = function (m) {
+        var from = m.from || {};
+        var c = store.contactForPhone(from.phone);
+        return (c && c.name) || from.name || from.phone || "Inconnu";
+    };
+    store.setInboxStatus = function (id, status) {
+        var m = store.inboxItem(id); if (!m) return;
+        var updated = Object.assign({}, m, { status: status, updatedAt: nowISO() });
+        if (status === "applied") updated.appliedAt = nowISO();
+        U.active.upsertInbox(updated);
+    };
+    store.deleteInboxItem = function (id) { U.active.deleteInbox(id); };
+
+    // Applique la proposition IA d'un message selon son intention, puis marque « appliqué ».
+    // `overrides` permet à l'UI de corriger les champs avant application.
+    store.applyInboxItem = function (id, overrides) {
+        var m = store.inboxItem(id); if (!m) return null;
+        var ai = m.ai || {};
+        var proposed = Object.assign({}, ai.proposed || {}, overrides || {});
+        var intent = (overrides && overrides.intent) || ai.intent || "unknown";
+        var senderContact = store.contactForPhone((m.from || {}).phone);
+        var assignee = proposed.assignee || (senderContact && senderContact.name) || null;
+        var result = null;
+
+        if (intent === "update_chantier" && ai.chantierId && store.chantier(ai.chantierId)) {
+            var c = store.chantier(ai.chantierId);
+            var note = proposed.note || m.rawText;
+            result = store.saveChantier({
+                id: c.id, nom: c.nom, pole: c.pole,
+                statut: (proposed.statut && U.STATUSES[proposed.statut]) ? proposed.statut : c.statut,
+                priorite: (proposed.priority && U.PRIORITIES[proposed.priority]) ? proposed.priority : c.priorite,
+                responsable: proposed.assignee || c.responsable,
+                deadline: proposed.deadline || c.deadline,
+                progression: (proposed.progression != null) ? proposed.progression : c.progression,
+                notes: note ? ((c.notes ? c.notes + "\n" : "") + note) : c.notes
+            });
+        } else if (intent === "new_task") {
+            result = store.saveDailyTask({
+                title: proposed.taskTitle || proposed.title || m.rawText || "Tâche",
+                priority: proposed.priority || null,
+                due: proposed.deadline || proposed.due || null,
+                assignee: assignee,
+                chantier: (ai.chantierId && store.chantier(ai.chantierId)) ? ai.chantierId : null
+            });
+        } else if (intent === "note" && ai.chantierId && store.chantier(ai.chantierId)) {
+            var cn = store.chantier(ai.chantierId);
+            var txt = proposed.note || m.rawText || "";
+            result = store.saveChantier({ id: cn.id, nom: cn.nom, pole: cn.pole, notes: (cn.notes ? cn.notes + "\n" : "") + txt });
+        } else {
+            return null; // non applicable automatiquement → l'UI doit passer par « Modifier »
+        }
+        store.setInboxStatus(id, "applied");
+        return result;
+    };
+
     // Export brut de l'état courant.
     store.exportData = function () {
         return {
@@ -401,7 +503,10 @@
             chantiers: store.data.chantiers,
             objectives: store.data.objectives,
             dailysections: store.data.dailysections,
-            dailytasks: store.data.dailytasks
+            dailytasks: store.data.dailytasks,
+            inbox: store.data.inbox,
+            contacts: store.data.contacts,
+            reports: store.data.reports
         };
     };
 

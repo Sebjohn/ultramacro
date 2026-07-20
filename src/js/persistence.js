@@ -30,7 +30,7 @@
     /*  (Garantit qu'aucune donnée de démo ne peut écraser les vôtres.)   */
     /* ------------------------------------------------------------------ */
     function seed() {
-        return { poles: {}, chantiers: {}, objectives: {}, dailysections: {}, dailytasks: {} };
+        return { poles: {}, chantiers: {}, objectives: {}, dailysections: {}, dailytasks: {}, inbox: {}, contacts: {}, reports: {} };
     }
 
     /* ------------------------------------------------------------------ */
@@ -104,9 +104,61 @@
         };
     }
 
+    // Boîte de réception (messages WhatsApp interprétés par l'IA, en attente de validation).
+    function normInboxItem(m, i) {
+        var id = sanitizeKey(m.id != null ? m.id : ("in_" + U.uid()));
+        var now = new Date().toISOString();
+        var from = m.from || {};
+        var ai = m.ai || {};
+        return {
+            id: id,
+            source: m.source || "whatsapp",
+            from: { phone: from.phone || null, name: from.name || null },
+            rawText: (m.rawText || m.text || "").toString(),
+            ai: {
+                intent: ai.intent || "unknown",
+                confidence: (typeof ai.confidence === "number") ? ai.confidence : null,
+                summary: ai.summary || null,
+                poleId: ai.poleId ? sanitizeKey(ai.poleId) : null,
+                chantierId: ai.chantierId ? sanitizeKey(ai.chantierId) : null,
+                proposed: ai.proposed || {}
+            },
+            status: (m.status === "applied" || m.status === "rejected") ? m.status : "pending",
+            receivedAt: m.receivedAt || m.createdAt || now,
+            createdAt: m.createdAt || now,
+            updatedAt: m.updatedAt || now,
+            appliedAt: m.appliedAt || null
+        };
+    }
+
+    // Contacts WhatsApp : numéro → personne (assigné).
+    function normContact(c, i) {
+        var id = sanitizeKey(c.id != null ? c.id : ("ct_" + U.uid()));
+        return {
+            id: id,
+            phone: (c.phone || "").toString(),
+            name: (c.name || "").toString(),
+            createdAt: c.createdAt || new Date().toISOString()
+        };
+    }
+
+    // Comptes rendus (synthèses journalières / hebdomadaires générées par l'IA).
+    function normReport(r, i) {
+        var id = sanitizeKey(r.id != null ? r.id : ("rep_" + U.uid()));
+        var now = new Date().toISOString();
+        return {
+            id: id,
+            period: r.period === "week" ? "week" : "day",
+            date: r.date || now.slice(0, 10),
+            title: (r.title || "Compte rendu").toString(),
+            body: (r.body || "").toString(),
+            createdAt: r.createdAt || now
+        };
+    }
+
     function normalize(raw) {
         raw = raw || {};
-        var out = { poles: {}, chantiers: {}, objectives: {}, dailysections: {}, dailytasks: {} };
+        var out = { poles: {}, chantiers: {}, objectives: {}, dailysections: {}, dailytasks: {}, inbox: {}, contacts: {}, reports: {} };
 
         var poles = raw.poles || {};
         Object.keys(poles).forEach(function (k, i) {
@@ -138,6 +190,18 @@
         var dtlist = Array.isArray(dt) ? dt : Object.keys(dt).map(function (k) { return dt[k]; });
         dtlist.forEach(function (t, i) { var n = normDailyTask(t, i); out.dailytasks[n.id] = n; });
 
+        var ib = raw.inbox || {};
+        var iblist = Array.isArray(ib) ? ib : Object.keys(ib).map(function (k) { return ib[k]; });
+        iblist.forEach(function (m, i) { var n = normInboxItem(m, i); out.inbox[n.id] = n; });
+
+        var ct = raw.contacts || {};
+        var ctlist = Array.isArray(ct) ? ct : Object.keys(ct).map(function (k) { return ct[k]; });
+        ctlist.forEach(function (c, i) { var n = normContact(c, i); out.contacts[n.id] = n; });
+
+        var rp = raw.reports || {};
+        var rplist = Array.isArray(rp) ? rp : Object.keys(rp).map(function (k) { return rp[k]; });
+        rplist.forEach(function (r, i) { var n = normReport(r, i); out.reports[n.id] = n; });
+
         return out;
     }
 
@@ -167,7 +231,7 @@
 
     function persistLocal(data) {
         try {
-            localStorage.setItem(LS.DATA, JSON.stringify({ poles: data.poles, chantiers: data.chantiers, objectives: data.objectives || {}, dailysections: data.dailysections || {}, dailytasks: data.dailytasks || {} }));
+            localStorage.setItem(LS.DATA, JSON.stringify({ poles: data.poles, chantiers: data.chantiers, objectives: data.objectives || {}, dailysections: data.dailysections || {}, dailytasks: data.dailytasks || {}, inbox: data.inbox || {}, contacts: data.contacts || {}, reports: data.reports || {} }));
             return true;
         } catch (e) {
             console.error("Écriture localStorage impossible :", e);
@@ -207,8 +271,14 @@
     LocalRepo.prototype.deleteDailySection = function (id) { delete this.data.dailysections[id]; this._commit(); };
     LocalRepo.prototype.upsertDailyTask = function (t) { this.data.dailytasks[t.id] = t; this._commit(); };
     LocalRepo.prototype.deleteDailyTask = function (id) { delete this.data.dailytasks[id]; this._commit(); };
+    LocalRepo.prototype.upsertInbox = function (m) { this.data.inbox[m.id] = m; this._commit(); };
+    LocalRepo.prototype.deleteInbox = function (id) { delete this.data.inbox[id]; this._commit(); };
+    LocalRepo.prototype.upsertContact = function (c) { this.data.contacts[c.id] = c; this._commit(); };
+    LocalRepo.prototype.deleteContact = function (id) { delete this.data.contacts[id]; this._commit(); };
+    LocalRepo.prototype.upsertReport = function (r) { this.data.reports[r.id] = r; this._commit(); };
+    LocalRepo.prototype.deleteReport = function (id) { delete this.data.reports[id]; this._commit(); };
     LocalRepo.prototype.bulkReplace = function (data) { this.data = normalize(data); this._commit(); };
-    LocalRepo.prototype.snapshot = function () { return { poles: this.data.poles, chantiers: this.data.chantiers, objectives: this.data.objectives, dailysections: this.data.dailysections, dailytasks: this.data.dailytasks }; };
+    LocalRepo.prototype.snapshot = function () { return { poles: this.data.poles, chantiers: this.data.chantiers, objectives: this.data.objectives, dailysections: this.data.dailysections, dailytasks: this.data.dailytasks, inbox: this.data.inbox, contacts: this.data.contacts, reports: this.data.reports }; };
     LocalRepo.prototype.stop = function () {};
 
     /* ================================================================== */
@@ -244,7 +314,10 @@
         this.objectives = {};
         this.dailysections = {};
         this.dailytasks = {};
-        this._loaded = { poles: false, chantiers: false, objectives: false, dailysections: false, dailytasks: false };
+        this.inbox = {};
+        this.contacts = {};
+        this.reports = {};
+        this._loaded = { poles: false, chantiers: false, objectives: false, dailysections: false, dailytasks: false, inbox: false, contacts: false, reports: false };
         this._refs = [];
     }
 
@@ -262,11 +335,13 @@
     };
 
     RealtimeRepo.prototype._emit = function () {
-        if (!this._loaded.poles || !this._loaded.chantiers || !this._loaded.objectives
-            || !this._loaded.dailysections || !this._loaded.dailytasks) return;
+        var l = this._loaded;
+        if (!l.poles || !l.chantiers || !l.objectives || !l.dailysections || !l.dailytasks
+            || !l.inbox || !l.contacts || !l.reports) return;
         U.store.set({
             poles: this.poles, chantiers: this.chantiers, objectives: this.objectives,
-            dailysections: this.dailysections, dailytasks: this.dailytasks
+            dailysections: this.dailysections, dailytasks: this.dailytasks,
+            inbox: this.inbox, contacts: this.contacts, reports: this.reports
         });
     };
 
@@ -287,6 +362,9 @@
         bind("objectives");
         bind("dailysections");
         bind("dailytasks");
+        bind("inbox");
+        bind("contacts");
+        bind("reports");
     };
 
     // Premier branchement : si le workspace cloud est vide, on téléverse les données locales (ou le seed).
@@ -303,7 +381,8 @@
                 if (hasLocal) {
                     return self.base.set({
                         poles: local.poles, chantiers: local.chantiers, objectives: local.objectives || {},
-                        dailysections: local.dailysections || {}, dailytasks: local.dailytasks || {}
+                        dailysections: local.dailysections || {}, dailytasks: local.dailytasks || {},
+                        inbox: local.inbox || {}, contacts: local.contacts || {}, reports: local.reports || {}
                     }).then(function () { self._listen(); });
                 }
             }
@@ -323,14 +402,21 @@
     RealtimeRepo.prototype.deleteDailySection = function (id) { this.base.child("dailysections/" + id).remove().catch(cloudFail); };
     RealtimeRepo.prototype.upsertDailyTask = function (t) { setStatus("saving"); this.base.child("dailytasks/" + t.id).set(t).catch(cloudFail); };
     RealtimeRepo.prototype.deleteDailyTask = function (id) { this.base.child("dailytasks/" + id).remove().catch(cloudFail); };
+    RealtimeRepo.prototype.upsertInbox = function (m) { setStatus("saving"); this.base.child("inbox/" + m.id).set(m).catch(cloudFail); };
+    RealtimeRepo.prototype.deleteInbox = function (id) { this.base.child("inbox/" + id).remove().catch(cloudFail); };
+    RealtimeRepo.prototype.upsertContact = function (c) { setStatus("saving"); this.base.child("contacts/" + c.id).set(c).catch(cloudFail); };
+    RealtimeRepo.prototype.deleteContact = function (id) { this.base.child("contacts/" + id).remove().catch(cloudFail); };
+    RealtimeRepo.prototype.upsertReport = function (r) { setStatus("saving"); this.base.child("reports/" + r.id).set(r).catch(cloudFail); };
+    RealtimeRepo.prototype.deleteReport = function (id) { this.base.child("reports/" + id).remove().catch(cloudFail); };
     RealtimeRepo.prototype.bulkReplace = function (data) {
         var n = normalize(data);
         this.base.set({
             poles: n.poles, chantiers: n.chantiers, objectives: n.objectives,
-            dailysections: n.dailysections, dailytasks: n.dailytasks
+            dailysections: n.dailysections, dailytasks: n.dailytasks,
+            inbox: n.inbox, contacts: n.contacts, reports: n.reports
         }).catch(cloudFail);
     };
-    RealtimeRepo.prototype.snapshot = function () { return { poles: this.poles, chantiers: this.chantiers, objectives: this.objectives, dailysections: this.dailysections, dailytasks: this.dailytasks }; };
+    RealtimeRepo.prototype.snapshot = function () { return { poles: this.poles, chantiers: this.chantiers, objectives: this.objectives, dailysections: this.dailysections, dailytasks: this.dailytasks, inbox: this.inbox, contacts: this.contacts, reports: this.reports }; };
     RealtimeRepo.prototype.stop = function () {
         this._refs.forEach(function (r) { try { r.ref.off("value", r.cb); } catch (e) {} });
         this._refs = [];

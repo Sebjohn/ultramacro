@@ -18,13 +18,16 @@
         quickAdd: {},
         collapsedSections: {},
         editingSection: null,
-        _focusAddSid: undefined
+        _focusAddSid: undefined,
+        // Boîte de réception
+        inboxFilter: "pending",
+        pendingInbox: null
     };
 
     /* --------- Navigation --------- */
-    var TARGETS = { pole: "view-pole", kanban: "view-kanban", mindmap: "view-mindmap", calendar: "view-calendar", daily: "view-daily", dashboard: "view-dashboard" };
+    var TARGETS = { pole: "view-pole", kanban: "view-kanban", mindmap: "view-mindmap", calendar: "view-calendar", daily: "view-daily", inbox: "view-inbox", reports: "view-reports", dashboard: "view-dashboard" };
     // Vues regroupées sous le menu « Autres ».
-    var MORE_VIEWS = { kanban: 1, mindmap: 1, daily: 1 };
+    var MORE_VIEWS = { kanban: 1, mindmap: 1, daily: 1, inbox: 1, reports: 1 };
 
     U.nav = function (view, param) {
         if (view === "pole") {
@@ -107,6 +110,15 @@
             U.viewState.calFilter = b.dataset.cal;
             $("calFilter").querySelectorAll(".seg-btn").forEach(function (x) { x.classList.toggle("is-active", x === b); });
             U.views.renderTimeline();
+        });
+
+        // Filtre boîte de réception
+        var inboxFilter = $("inboxFilter");
+        if (inboxFilter) inboxFilter.addEventListener("click", function (e) {
+            var b = e.target.closest(".seg-btn"); if (!b) return;
+            U.viewState.inboxFilter = b.dataset.inbox;
+            inboxFilter.querySelectorAll(".seg-btn").forEach(function (x) { x.classList.toggle("is-active", x === b); });
+            U.views.renderInbox();
         });
 
         // Menu « Autres » (popover partagé desktop / feuille mobile)

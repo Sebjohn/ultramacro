@@ -116,6 +116,7 @@
 
     /* ===================== MODAL CHANTIER ===================== */
     ui.openChantier = function (id) {
+        U.viewState.pendingInbox = null; // un open « normal » ne valide aucun message
         var editing = id ? U.store.chantier(id) : null;
         $("chantierForm").dataset.editing = editing ? editing.id : "";
         $("chantierModalTitle").innerHTML = editing
@@ -162,8 +163,17 @@
             notes: $("fNotes").value
         });
         if (!res) { ui.toast("Nom et pôle sont requis", "error"); return; }
+        applyPendingInbox();
         ui.closeModal("chantierModal");
         ui.toast(id ? "Chantier mis à jour" : "Chantier créé", "success");
+    }
+
+    // Si le formulaire a été ouvert depuis la boîte de réception, marque le message « appliqué ».
+    function applyPendingInbox() {
+        if (U.viewState.pendingInbox) {
+            U.store.setInboxStatus(U.viewState.pendingInbox, "applied");
+            U.viewState.pendingInbox = null;
+        }
     }
 
     ui.deleteChantierFlow = function (id) {
@@ -290,6 +300,7 @@
 
     /* ===================== DAILY TASKS ===================== */
     ui.openDailyTask = function (id) {
+        U.viewState.pendingInbox = null; // un open « normal » ne valide aucun message
         var editing = id ? U.store.dailyTask(id) : null;
         var form = $("dailyTaskForm");
         form.dataset.editing = editing ? editing.id : "";
@@ -334,9 +345,50 @@
             done: $("fTaskDone").checked
         });
         if (!res) { ui.toast("Le titre de la tâche est requis", "error"); return; }
+        applyPendingInbox();
         ui.closeModal("dailyTaskModal");
         ui.toast(id ? "Tâche mise à jour" : "Tâche créée", "success");
     }
+
+    // Ouvre le bon formulaire pré-rempli avec la proposition de l'IA, pour correction avant validation.
+    ui.reviewInboxModify = function (id) {
+        var m = U.store.inboxItem(id); if (!m) return;
+        var ai = m.ai || {}, p = ai.proposed || {};
+        var sender = U.store.contactForPhone((m.from || {}).phone);
+        var assignee = p.assignee || (sender && sender.name) || "";
+        var ch = ai.chantierId ? U.store.chantier(ai.chantierId) : null;
+
+        if ((ai.intent === "update_chantier" || ai.intent === "note") && ch) {
+            ui.openChantier(ch.id);
+            if (p.statut && U.STATUSES[p.statut]) $("fStatut").value = p.statut;
+            if (p.priority && U.PRIORITIES[p.priority]) $("fPriorite").value = p.priority;
+            if (p.deadline) $("fDeadline").value = p.deadline;
+            if (p.progression != null) { $("fProgress").value = p.progression; $("fProgressVal").textContent = p.progression; }
+            var extra = p.note || m.rawText;
+            if (extra) $("fNotes").value = ($("fNotes").value ? $("fNotes").value + "\n" : "") + extra;
+        } else {
+            // Par défaut : nouvelle tâche pré-remplie
+            ui.openDailyTask();
+            $("fTaskTitle").value = p.taskTitle || p.title || m.rawText || "";
+            if (p.priority && U.PRIORITIES[p.priority]) $("fTaskPriority").value = p.priority;
+            if (p.deadline || p.due) $("fTaskDue").value = p.deadline || p.due;
+            if (ch) $("fTaskChantier").value = ch.id;
+            if (assignee) {
+                var sel = $("fTaskAssignee");
+                if (![].some.call(sel.options, function (o) { return o.value === assignee; })) {
+                    sel.insertAdjacentHTML("beforeend", '<option value="' + U.escape(assignee) + '">' + U.escape(assignee) + "</option>");
+                }
+                sel.value = assignee;
+            }
+        }
+        U.viewState.pendingInbox = id; // la validation du formulaire marquera ce message « appliqué »
+    };
+
+    ui.deleteReportFlow = function (id) {
+        var r = U.store.report(id); if (!r) return;
+        ui.confirm("Supprimer ce compte rendu ?", { title: "Supprimer le compte rendu", okLabel: "Supprimer" })
+            .then(function (ok) { if (ok) { U.store.deleteReport(id); ui.toast("Compte rendu supprimé", "info"); } });
+    };
 
     ui.deleteDailyTaskFlow = function (id) {
         var t = U.store.dailyTask(id); if (!t) return;
@@ -371,8 +423,23 @@
         }).join("");
     }
 
+    // Liste des contacts WhatsApp (numéro → personne)
+    function renderContacts() {
+        var el = $("contactsList"); if (!el) return;
+        var list = U.store.contactsArray();
+        if (!list.length) { el.innerHTML = '<p class="muted small">Aucun contact enregistré.</p>'; return; }
+        el.innerHTML = list.map(function (c) {
+            return '<div class="assignee-row">' +
+                '<span class="assignee-name">' + U.escape(c.name) + "</span>" +
+                '<span class="assignee-count">' + U.escape(c.phone) + "</span>" +
+                '<button class="icon-btn assignee-del" data-cid="' + U.escape(c.id) + '" title="Supprimer le contact"><i class="fa-solid fa-trash"></i></button>' +
+                "</div>";
+        }).join("");
+    }
+
     ui.openSettings = function () {
         renderAssignees();
+        renderContacts();
         $("fbDbUrl").value = U.persistence.getDbUrl() || U.persistence.suggestedUrl;
         $("fbWorkspace").value = U.persistence.getWorkspace();
         var cloud = U.persistence.mode === "cloud";
@@ -386,6 +453,21 @@
     };
 
     function wireSettings() {
+        // Contacts WhatsApp : ajout + suppression
+        $("contactForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            var c = U.store.saveContact({ phone: $("fContactPhone").value, name: $("fContactName").value });
+            if (!c) { ui.toast("Numéro et nom requis", "error"); return; }
+            $("fContactPhone").value = ""; $("fContactName").value = "";
+            renderContacts();
+            ui.toast("Contact ajouté", "success");
+        });
+        $("contactsList").addEventListener("click", function (e) {
+            var b = e.target.closest(".assignee-del"); if (!b) return;
+            U.store.deleteContact(b.dataset.cid);
+            renderContacts();
+            ui.toast("Contact supprimé", "info");
+        });
         $("assigneesList").addEventListener("click", function (e) {
             var b = e.target.closest(".assignee-del"); if (!b) return;
             var name = b.dataset.name;

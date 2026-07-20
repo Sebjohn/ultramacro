@@ -535,6 +535,40 @@ input.qa-due { width: 146px; color: var(--muted); }
 .dg-head .dg-sub { font-size: 11px; color: var(--faint); font-weight: 600; margin-left: 2px; }
 .dg-head i { color: var(--faint); font-size: 12px; }
 
+/* ===================== BOÎTE DE RÉCEPTION + COMPTES RENDUS ===================== */
+.nav-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--brand); color: #fff; font-size: 10px; font-weight: 800; line-height: 1; }
+.nav-menu-item .nav-badge { margin-left: auto; }
+.btn-sm { padding: 6px 11px; font-size: 12px; }
+
+.inbox-list, .reports-list { display: flex; flex-direction: column; gap: 12px; max-width: 780px; }
+.inbox-card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--brand); border-radius: var(--radius); box-shadow: var(--card); padding: 14px 16px; animation: fade .22s var(--ease); }
+.inbox-card.status-applied { border-left-color: var(--termine); opacity: .82; }
+.inbox-card.status-rejected { border-left-color: var(--faint); opacity: .68; }
+.inbox-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 9px; }
+.inbox-from { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; }
+.inbox-from i { color: #25D366; }
+.inbox-intent { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; padding: 3px 9px; border-radius: 999px; background: var(--bg-soft); color: var(--muted); border: 1px solid var(--border); }
+.inbox-conf { font-size: 11px; font-weight: 700; color: var(--faint); }
+.inbox-time { margin-left: auto; font-size: 11.5px; color: var(--faint); }
+.inbox-raw { font-size: 13px; color: var(--text); line-height: 1.5; background: var(--bg-soft); border-radius: var(--radius-xs); padding: 9px 12px; margin-bottom: 9px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.inbox-proposed { font-size: 12.5px; color: var(--muted); margin-bottom: 12px; display: flex; align-items: baseline; gap: 7px; }
+.inbox-proposed i { color: var(--brand); }
+.inbox-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.inbox-status-tag { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+.status-applied .inbox-status-tag { color: var(--termine); }
+
+.report-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--card); padding: 16px 18px; animation: fade .22s var(--ease); }
+.report-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.report-period { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--brand) 12%, transparent); color: var(--brand); }
+.report-date { font-size: 12px; color: var(--faint); }
+.report-head .task-act { margin-left: auto; opacity: 1; }
+.report-title { font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+.report-body { font-size: 13px; color: var(--muted); line-height: 1.6; overflow-wrap: anywhere; }
+
+.contact-add { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.contact-add input { flex: 1 1 140px; width: auto; }
+.contact-add .btn { flex-shrink: 0; }
+
 /* ===================== CARTE MENTALE (radiale) ===================== */
 .mindmap-wrap { display: flex; justify-content: center; padding: 8px 4px 28px; overflow-x: auto; }
 .mm-svg { display: block; width: 100%; height: auto; max-width: 1100px; }
