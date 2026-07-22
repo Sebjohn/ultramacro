@@ -270,9 +270,9 @@
         var tasks = U.store.dailyTasksOfChantier(c.id);
         var rows = renderTaskRows(tasks, false, { hideChantier: true });
         return '<div class="cc-tasks" data-cid="' + c.id + '">' +
-            (tasks.length ? '<div class="cc-tasks-list">' + rows + "</div>" : "") +
             '<div class="cc-task-add"><i class="fa-solid fa-plus"></i>' +
                 '<input class="cc-task-input" data-cid="' + c.id + '" maxlength="200" placeholder="Ajouter une tâche" autocomplete="off" /></div>' +
+            (tasks.length ? '<div class="cc-tasks-list">' + rows + "</div>" : "") +
         "</div>";
     }
 
@@ -457,23 +457,22 @@
     function taskRow(t, draggable, opts) {
         opts = opts || {};
         var prio = t.priority && P[t.priority] ? P[t.priority] : null;
+        var dot = prio ? '<span class="task-dot" style="background:' + prio.color + '" title="Priorité ' + prio.label + '"></span>' : "";
         var meta = "";
-        if (t.due) meta += '<span class="task-due"><i class="fa-regular fa-clock"></i> ' + U.escape(U.relativeLabel(t.due)) + "</span>";
-        if (t.assignee) meta += '<span class="task-assignee" title="' + U.escape(t.assignee) + '"><span class="task-ava" style="background:' + U.colorForName(t.assignee) + '">' + U.escape(U.initials(t.assignee)) + "</span>" + U.escape(t.assignee) + "</span>";
+        if (t.due) meta += '<span class="task-due"><i class="fa-regular fa-clock"></i>' + U.escape(U.relativeLabel(t.due)) + "</span>";
         if (t.chantier && !opts.hideChantier) {
             var ch = U.store.chantier(t.chantier);
             if (ch) {
                 var pole = U.store.pole(ch.pole);
                 var color = pole ? U.themeColor(pole.theme) : "var(--faint)";
-                meta += '<span class="task-chantier" style="--pole:' + color + '"><i class="fa-solid fa-diagram-project"></i> ' + U.escape(ch.nom) + "</span>";
+                meta += '<span class="task-chantier" style="--pole:' + color + '" title="' + U.escape(ch.nom) + '"><i class="fa-solid fa-diagram-project"></i><span class="tc-name">' + U.escape(ch.nom) + "</span></span>";
             }
         }
+        if (t.assignee) meta += '<span class="task-ava" style="background:' + U.colorForName(t.assignee) + '" title="' + U.escape(t.assignee) + '">' + U.escape(U.initials(t.assignee)) + "</span>";
         var metaHTML = meta ? '<div class="task-meta">' + meta + "</div>" : "";
-        var accent = prio ? ' style="border-left-color:' + prio.color + '"' : "";
-        var prioTitle = prio ? ' title="Priorité ' + prio.label + '"' : "";
-        return '<div class="task-row' + (t.done ? " is-done" : "") + (prio ? " has-prio" : "") + '"' + accent + (draggable ? ' draggable="true"' : "") + ' data-tid="' + t.id + '"' + prioTitle + ">" +
+        return '<div class="task-row' + (t.done ? " is-done" : "") + '"' + (draggable ? ' draggable="true"' : "") + ' data-tid="' + t.id + '">' +
             '<button class="task-check" data-act="toggle-task" data-tid="' + t.id + '" aria-label="' + (t.done ? "Rouvrir la tâche" : "Marquer terminée") + '"><i class="fa-solid fa-check"></i></button>' +
-            '<div class="task-body" data-act="edit-task" data-tid="' + t.id + '">' +
+            '<div class="task-body" data-act="edit-task" data-tid="' + t.id + '">' + dot +
                 '<span class="task-title">' + U.escape(t.title) + "</span>" + metaHTML +
             "</div>" +
             '<div class="task-actions">' +
@@ -571,7 +570,7 @@
 
         var body = "";
         if (!collapsed) {
-            body = '<div class="daily-list" data-sid="' + sid + '">' + renderTaskRows(tasks, true) + quickAddRow(sid) + "</div>";
+            body = '<div class="daily-list" data-sid="' + sid + '">' + quickAddRow(sid) + renderTaskRows(tasks, true) + "</div>";
         }
         return '<div class="daily-section' + (isImplicit ? " is-implicit" : "") + '" data-sid="' + sid + '">' + head + body + "</div>";
     }
