@@ -423,7 +423,7 @@
                 <div class="grid-2">
                     <div class="field">
                         <label for="fTaskChantier"><i class="fa-solid fa-diagram-project"></i> Chantier lié</label>
-                        <select id="fTaskChantier"></select>
+                        <input type="text" id="fTaskChantier" list="chantierList" placeholder="Rechercher un chantier…" autocomplete="off" />
                     </div>
                     <div class="field">
                         <label class="check-field" for="fTaskDone"><input type="checkbox" id="fTaskDone" /> <span>Terminée</span></label>
@@ -539,6 +539,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Liste des chantiers pour l'autocomplétion (scalable, native) -->
+    <datalist id="chantierList"></datalist>
 
     <!-- ============ TOASTS ============ -->
     <div class="toast-stack" id="toastStack" aria-live="polite"></div>

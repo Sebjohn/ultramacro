@@ -78,6 +78,13 @@ window.Ultra = window.Ultra || {};
         return name.trim().split(/\s+/).map(function (n) { return n[0]; }).join("").slice(0, 2).toUpperCase();
     };
 
+    // Couleur stable dérivée d'un nom (pour les pastilles d'initiales des assignés).
+    U.colorForName = function (name) {
+        var s = String(name || ""), h = 0;
+        for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+        return "hsl(" + (h % 360) + ", 45%, 45%)";
+    };
+
     U.clamp = function (n, min, max) { return Math.max(min, Math.min(max, n)); };
 
     /* --- Dates --- */

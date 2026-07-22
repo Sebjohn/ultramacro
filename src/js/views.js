@@ -41,24 +41,42 @@
         renderPolesGrid();
     };
 
-    function renderObjectives() {
-        var el = $("objectivesRow");
-        if (!el) return;
-        var objs = U.store.objectivesArray();
-        if (!objs.length) {
-            el.innerHTML = '<button class="obj-empty" data-act="new-objective">＋ Ajoutez un objectif hebdomadaire ou mensuel</button>';
-            return;
-        }
-        el.innerHTML = objs.map(function (o) {
-            var pct = o.target > 0 ? Math.min(100, Math.round(o.current / o.target * 100)) : 0;
-            var periodLabel = o.period === "week" ? "Cette semaine" : "Ce mois";
-            return '<button class="obj-card' + (pct >= 100 ? " done" : "") + '" data-act="edit-objective" data-oid="' + o.id + '">' +
+    function objectiveCard(o, isArchived) {
+        var pct = o.target > 0 ? Math.min(100, Math.round(o.current / o.target * 100)) : 0;
+        var periodLabel = o.period === "week" ? "Cette semaine" : "Ce mois";
+        var greyed = isArchived || o.achieved || pct >= 100;
+        var actions = isArchived
+            ? '<button class="obj-act" data-act="unarchive-objective" data-oid="' + o.id + '" title="Désarchiver"><i class="fa-solid fa-box-open"></i></button>'
+            : '<button class="obj-act" data-act="toggle-achieved" data-oid="' + o.id + '" title="' + (o.achieved ? "Marquer non atteint" : "Marquer atteint") + '"><i class="fa-solid fa-' + (o.achieved ? "rotate-left" : "check") + '"></i></button>' +
+              '<button class="obj-act" data-act="archive-objective" data-oid="' + o.id + '" title="Archiver"><i class="fa-solid fa-box-archive"></i></button>';
+        return '<div class="obj-card' + (greyed ? " done" : "") + (o.achieved ? " achieved" : "") + '">' +
+            '<div class="obj-body" data-act="edit-objective" data-oid="' + o.id + '">' +
                 '<div class="obj-head"><span class="obj-label">' + U.escape(o.label) + "</span>" +
                 '<span class="obj-period">' + periodLabel + "</span></div>" +
                 '<div class="obj-track"><div class="obj-fill" style="width:' + pct + '%"></div></div>' +
                 '<div class="obj-foot"><span class="obj-val">' + o.current + " / " + o.target + "</span>" +
-                '<span class="obj-pct">' + pct + "%</span></div></button>";
-        }).join("");
+                '<span class="obj-pct">' + (o.achieved ? '<i class="fa-solid fa-check"></i> atteint' : pct + "%") + "</span></div>" +
+            "</div>" +
+            '<div class="obj-actions">' + actions + "</div>" +
+        "</div>";
+    }
+    function renderObjectives() {
+        var el = $("objectivesRow");
+        if (!el) return;
+        var all = U.store.objectivesArray();
+        var active = all.filter(function (o) { return !o.archived; });
+        var archived = all.filter(function (o) { return o.archived; });
+        if (!active.length && !archived.length) {
+            el.innerHTML = '<button class="obj-empty" data-act="new-objective">＋ Ajoutez un objectif hebdomadaire ou mensuel</button>';
+            return;
+        }
+        var html = active.map(function (o) { return objectiveCard(o, false); }).join("");
+        if (archived.length) {
+            html += '<button class="obj-archtoggle" data-act="toggle-archived-obj"><i class="fa-solid fa-box-archive"></i> ' +
+                (U.viewState.showArchivedObjectives ? "Masquer les archivés" : "Archivés (" + archived.length + ")") + "</button>";
+            if (U.viewState.showArchivedObjectives) html += archived.map(function (o) { return objectiveCard(o, true); }).join("");
+        }
+        el.innerHTML = html;
     }
 
     var KPI_ITEMS = [
@@ -189,6 +207,7 @@
         $("detailEditPole").onclick = function () { U.ui.openPole(poleId); };
 
         $("kanban").innerHTML = kanbanColumnsHTML(visible, { showPole: false });
+        restoreCcFocus($("kanban"));
     };
 
     // Vue Kanban générale : tous les chantiers, tous pôles confondus.
@@ -196,7 +215,16 @@
         var q = U.viewState.search;
         var list = U.store.chantiersArray().filter(function (c) { return matches(c, q); });
         $("kanbanGlobal").innerHTML = kanbanColumnsHTML(list, { showPole: true });
+        restoreCcFocus($("kanbanGlobal"));
     };
+
+    // Rend le focus au champ « + tâche » d'un chantier après création (flux « taper, Entrée, continuer »).
+    function restoreCcFocus(board) {
+        if (U.viewState._focusCcAdd === undefined) return;
+        var cid = U.viewState._focusCcAdd; U.viewState._focusCcAdd = undefined;
+        var el = board.querySelector('.cc-task-input[data-cid="' + cid + '"]');
+        if (el) el.focus();
+    }
 
     function faIcon(cls) { return cls.replace("fa-solid ", "").replace("fa-regular ", ""); }
 
@@ -234,7 +262,18 @@
                 '<div class="cc-actions">' +
                     '<button class="cc-act" data-act="edit-chantier" data-cid="' + c.id + '" title="Modifier"><i class="fa-solid fa-pen"></i></button>' +
                     '<button class="cc-act del" data-act="delete-chantier" data-cid="' + c.id + '" title="Supprimer"><i class="fa-solid fa-trash"></i></button>' +
-                "</div></div></div>";
+                "</div></div>" + chantierTasksBlock(c) + "</div>";
+    }
+
+    // Bloc des tâches (daily) rattachées à un chantier, affiché sous la carte (Kanban / détail pôle).
+    function chantierTasksBlock(c) {
+        var tasks = U.store.dailyTasksOfChantier(c.id);
+        var rows = renderTaskRows(tasks, false, { hideChantier: true });
+        return '<div class="cc-tasks" data-cid="' + c.id + '">' +
+            (tasks.length ? '<div class="cc-tasks-list">' + rows + "</div>" : "") +
+            '<div class="cc-task-add"><i class="fa-solid fa-plus"></i>' +
+                '<input class="cc-task-input" data-cid="' + c.id + '" maxlength="200" placeholder="Ajouter une tâche" autocomplete="off" /></div>' +
+        "</div>";
     }
 
     /* ============================================================
@@ -415,12 +454,13 @@
     function cmpChrono(a, b) { return String(a.createdAt).localeCompare(String(b.createdAt)); }
     function doneLast(cmp) { return function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0) || cmp(a, b); }; }
 
-    function taskRow(t, draggable) {
+    function taskRow(t, draggable, opts) {
+        opts = opts || {};
         var prio = t.priority && P[t.priority] ? P[t.priority] : null;
         var meta = "";
         if (t.due) meta += '<span class="task-due"><i class="fa-regular fa-clock"></i> ' + U.escape(U.relativeLabel(t.due)) + "</span>";
-        if (t.assignee) meta += '<span class="task-assignee" title="' + U.escape(t.assignee) + '"><span class="task-ava">' + U.escape(U.initials(t.assignee)) + "</span>" + U.escape(t.assignee) + "</span>";
-        if (t.chantier) {
+        if (t.assignee) meta += '<span class="task-assignee" title="' + U.escape(t.assignee) + '"><span class="task-ava" style="background:' + U.colorForName(t.assignee) + '">' + U.escape(U.initials(t.assignee)) + "</span>" + U.escape(t.assignee) + "</span>";
+        if (t.chantier && !opts.hideChantier) {
             var ch = U.store.chantier(t.chantier);
             if (ch) {
                 var pole = U.store.pole(ch.pole);
@@ -467,17 +507,36 @@
     }
     U.dailyOptions = { assignee: assigneeOptions, chantier: chantierOptions, priority: priorityOptions };
 
+    // Rend une liste de tâches en insérant un séparateur « Terminées » avant la première tâche faite.
+    function renderTaskRows(tasks, draggable, opts) {
+        var html = "", sep = false;
+        tasks.forEach(function (t) {
+            if (t.done && !sep) { html += '<div class="task-sep"><span>Terminées</span></div>'; sep = true; }
+            html += taskRow(t, draggable, opts);
+        });
+        return html;
+    }
+
+    // Remplit la datalist des chantiers (autocomplétion scalable, partagée par toutes les saisies).
+    views.populateChantierDatalist = function () {
+        var dl = $("chantierList"); if (!dl) return;
+        var maps = U.store.chantierLabelMaps();
+        dl.innerHTML = Object.keys(maps.byLabel).sort(function (a, b) { return a.localeCompare(b, "fr"); })
+            .map(function (label) { return '<option value="' + U.escape(label) + '"></option>'; }).join("");
+    };
+
     // Ligne de saisie rapide : nom + priorité + échéance + assigné + chantier (Entrée pour créer).
     function quickAddRow(sid) {
         var key = sid || "";
         var d = U.viewState.quickAdd[key] || {};
+        var chLabel = d.chantier ? U.escape(U.store.chantierLabel(d.chantier)) : "";
         return '<div class="qa-row" data-sid="' + key + '">' +
             '<i class="fa-solid fa-plus qa-plus"></i>' +
             '<input class="qa-name" data-sid="' + key + '" maxlength="200" placeholder="Ajouter une tâche…" />' +
             '<select class="qa-field qa-priority" data-sid="' + key + '" title="Priorité">' + priorityOptions(d.priority) + "</select>" +
             '<input class="qa-field qa-due" type="date" data-sid="' + key + '" title="Échéance" />' +
             '<select class="qa-field qa-assignee" data-sid="' + key + '" title="Assigné">' + assigneeOptions(d.assignee) + "</select>" +
-            '<select class="qa-field qa-chantier" data-sid="' + key + '" title="Chantier">' + chantierOptions(d.chantier) + "</select>" +
+            '<input class="qa-field qa-chantier" data-sid="' + key + '" list="chantierList" title="Chantier" placeholder="Chantier" autocomplete="off" value="' + chLabel + '" />' +
         "</div>";
     }
 
@@ -512,8 +571,7 @@
 
         var body = "";
         if (!collapsed) {
-            var rows = tasks.map(function (t) { return taskRow(t, true); }).join("");
-            body = '<div class="daily-list" data-sid="' + sid + '">' + rows + quickAddRow(sid) + "</div>";
+            body = '<div class="daily-list" data-sid="' + sid + '">' + renderTaskRows(tasks, true) + quickAddRow(sid) + "</div>";
         }
         return '<div class="daily-section' + (isImplicit ? " is-implicit" : "") + '" data-sid="' + sid + '">' + head + body + "</div>";
     }
@@ -571,7 +629,7 @@
         return groups;
     }
     function groupBlock(g) {
-        var rows = g.tasks.map(function (t) { return taskRow(t, false); }).join("");
+        var rows = renderTaskRows(g.tasks, false);
         var head = "";
         if (g.label !== null) {
             var activeCount = g.tasks.filter(function (t) { return !t.done; }).length;
@@ -586,6 +644,7 @@
     views.renderDaily = function () {
         var board = $("dailyBoard");
         if (!board) return;
+        views.populateChantierDatalist();
         var mode = U.viewState.dailyGroup || "manual";
         var addSecBtn = $("dailyAddSection"); if (addSecBtn) addSecBtn.hidden = (mode !== "manual");
 
@@ -623,7 +682,7 @@
         var key = row.dataset.sid || "";
         var prio = row.querySelector(".qa-priority").value || null;
         var assignee = row.querySelector(".qa-assignee").value || null;
-        var chantier = row.querySelector(".qa-chantier").value || null;
+        var chantier = U.store.chantierIdForLabel(row.querySelector(".qa-chantier").value) || null;
         U.viewState.quickAdd[key] = { priority: prio, assignee: assignee, chantier: chantier }; // champs « collants »
         U.viewState._focusAddSid = key;
         U.store.saveDailyTask({
@@ -810,6 +869,10 @@
         else if (a.act === "delete-chantier") { e.stopPropagation(); U.ui.deleteChantierFlow(a.cid); }
         else if (a.act === "edit-objective") U.ui.openObjective(a.oid);
         else if (a.act === "new-objective") U.ui.openObjective();
+        else if (a.act === "toggle-achieved") { var o = U.store.objective(a.oid); if (o) U.store.setObjectiveAchieved(a.oid, !o.achieved); }
+        else if (a.act === "archive-objective") U.store.setObjectiveArchived(a.oid, true);
+        else if (a.act === "unarchive-objective") U.store.setObjectiveArchived(a.oid, false);
+        else if (a.act === "toggle-archived-obj") { U.viewState.showArchivedObjectives = !U.viewState.showArchivedObjectives; renderObjectives(); }
         // --- Daily tasks ---
         else if (a.act === "toggle-task") { var t = U.store.dailyTask(a.tid); if (t) U.store.setDailyTaskDone(a.tid, !t.done); }
         else if (a.act === "edit-task") U.ui.openDailyTask(a.tid);
@@ -830,10 +893,22 @@
     var dragId = null;
     function bindDnD(box) {
         box.addEventListener("dragstart", function (e) {
+            // Ne pas démarrer un glisser depuis la zone des tâches du chantier.
+            if (e.target.closest(".cc-tasks")) { e.preventDefault(); return; }
             var card = e.target.closest(".chantier-card"); if (!card) return;
             dragId = card.dataset.cid; card.classList.add("dragging");
             e.dataTransfer.effectAllowed = "move";
             try { e.dataTransfer.setData("text/plain", dragId); } catch (err) {}
+        });
+        // Ajout d'une tâche sous un chantier (Entrée).
+        box.addEventListener("keydown", function (e) {
+            var el = e.target;
+            if (el.classList.contains("cc-task-input") && e.key === "Enter") {
+                e.preventDefault();
+                var title = el.value.trim(); if (!title) return;
+                U.viewState._focusCcAdd = el.dataset.cid;
+                U.store.saveDailyTask({ title: title, chantier: el.dataset.cid });
+            }
         });
         box.addEventListener("dragend", function (e) {
             var card = e.target.closest(".chantier-card"); if (card) card.classList.remove("dragging");
@@ -963,7 +1038,7 @@
                 U.viewState.quickAdd[row.dataset.sid || ""] = {
                     priority: row.querySelector(".qa-priority").value || null,
                     assignee: row.querySelector(".qa-assignee").value || null,
-                    chantier: row.querySelector(".qa-chantier").value || null
+                    chantier: U.store.chantierIdForLabel(row.querySelector(".qa-chantier").value) || null
                 };
             }
         });

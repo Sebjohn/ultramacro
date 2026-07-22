@@ -63,6 +63,30 @@
         return store.chantiersArray().filter(function (c) { return c.pole === poleId; });
     };
 
+    // Libellés uniques pour la saisie « chantier » (datalist scalable) : label <-> id.
+    store.chantierLabelMaps = function () {
+        var byId = {}, byLabel = {};
+        var list = store.chantiersArray();
+        var nameCount = {};
+        list.forEach(function (c) { nameCount[c.nom] = (nameCount[c.nom] || 0) + 1; });
+        list.forEach(function (c) {
+            var label = c.nom;
+            if (nameCount[c.nom] > 1) { var p = store.pole(c.pole); label = c.nom + (p ? " · " + p.name : ""); }
+            var base = label, n = 2;
+            while (byLabel[label] && byLabel[label] !== c.id) { label = base + " #" + n; n++; }
+            byLabel[label] = c.id; byId[c.id] = label;
+        });
+        return { byId: byId, byLabel: byLabel };
+    };
+    store.chantierLabel = function (id) { return store.chantierLabelMaps().byId[id] || ""; };
+    store.chantierIdForLabel = function (label) { return store.chantierLabelMaps().byLabel[(label || "").trim()] || null; };
+
+    // Tâches (daily) rattachées à un chantier — actives d'abord, terminées ensuite.
+    store.dailyTasksOfChantier = function (chantierId) {
+        return store.dailyTasksArray().filter(function (t) { return t.chantier === chantierId; })
+            .sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0) || (a.order || 0) - (b.order || 0); });
+    };
+
     store.poleActiveCount = function (poleId) {
         return store.chantiersOfPole(poleId).filter(function (c) { return c.statut !== "termine"; }).length;
     };
@@ -281,6 +305,8 @@
             period: input.period === "week" ? "week" : "month",
             target: t,
             current: cu,
+            achieved: input.achieved != null ? !!input.achieved : (existing ? !!existing.achieved : false),
+            archived: input.archived != null ? !!input.archived : (existing ? !!existing.archived : false),
             order: existing ? existing.order : store.objectivesArray().length
         };
         if (!obj.label) return null;
@@ -288,6 +314,9 @@
         return obj;
     };
     store.deleteObjective = function (id) { U.active.deleteObjective(id); };
+    store.setObjectiveAchieved = function (id, v) { var o = store.objective(id); if (o) U.active.upsertObjective(Object.assign({}, o, { achieved: !!v })); };
+    store.setObjectiveArchived = function (id, v) { var o = store.objective(id); if (o) U.active.upsertObjective(Object.assign({}, o, { archived: v !== false })); };
+    store.hasArchivedObjectives = function () { return store.objectivesArray().some(function (o) { return o.archived; }); };
 
     /* --------- Daily tasks (liste « à la Asana » : sections + tâches) --------- */
     store.dailySectionsArray = function () {

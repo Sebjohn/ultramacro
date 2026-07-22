@@ -19,6 +19,8 @@
         collapsedSections: {},
         editingSection: null,
         _focusAddSid: undefined,
+        _focusCcAdd: undefined,
+        showArchivedObjectives: false,
         // Boîte de réception
         inboxFilter: "pending",
         pendingInbox: null

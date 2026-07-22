@@ -315,14 +315,14 @@
         $("fTaskPriority").innerHTML = '<option value="">Aucune</option>' +
             U.PRIORITY_ORDER.map(function (k) { return '<option value="' + k + '">' + U.PRIORITIES[k].label + "</option>"; }).join("");
         $("fTaskAssignee").innerHTML = U.dailyOptions.assignee(editing && editing.assignee, "Non assigné");
-        $("fTaskChantier").innerHTML = U.dailyOptions.chantier(editing && editing.chantier, "Aucun chantier");
+        U.views.populateChantierDatalist();
 
         $("fTaskTitle").value = editing ? editing.title : "";
         $("fTaskSection").value = (editing && editing.section) ? editing.section : "";
         $("fTaskPriority").value = (editing && editing.priority) ? editing.priority : "";
         $("fTaskDue").value = (editing && editing.due) ? editing.due : "";
         $("fTaskAssignee").value = (editing && editing.assignee) ? editing.assignee : "";
-        $("fTaskChantier").value = (editing && editing.chantier) ? editing.chantier : "";
+        $("fTaskChantier").value = (editing && editing.chantier) ? U.store.chantierLabel(editing.chantier) : "";
         $("fTaskDone").checked = editing ? !!editing.done : false;
         $("fTaskNotes").value = (editing && editing.notes) ? editing.notes : "";
         $("dailyTaskDelete").hidden = !editing;
@@ -340,7 +340,7 @@
             priority: $("fTaskPriority").value || null,
             due: $("fTaskDue").value || null,
             assignee: $("fTaskAssignee").value || null,
-            chantier: $("fTaskChantier").value || null,
+            chantier: U.store.chantierIdForLabel($("fTaskChantier").value) || null,
             notes: $("fTaskNotes").value,
             done: $("fTaskDone").checked
         });
@@ -372,7 +372,7 @@
             $("fTaskTitle").value = p.taskTitle || p.title || m.rawText || "";
             if (p.priority && U.PRIORITIES[p.priority]) $("fTaskPriority").value = p.priority;
             if (p.deadline || p.due) $("fTaskDue").value = p.deadline || p.due;
-            if (ch) $("fTaskChantier").value = ch.id;
+            if (ch) $("fTaskChantier").value = U.store.chantierLabel(ch.id);
             if (assignee) {
                 var sel = $("fTaskAssignee");
                 if (![].some.call(sel.options, function (o) { return o.value === assignee; })) {

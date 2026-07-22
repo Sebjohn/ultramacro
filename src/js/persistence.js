@@ -71,6 +71,8 @@
             period: o.period === "week" ? "week" : "month",
             target: t,
             current: cu,
+            achieved: !!o.achieved,
+            archived: !!o.archived,
             order: (typeof o.order === "number") ? o.order : (i || 0)
         };
     }
