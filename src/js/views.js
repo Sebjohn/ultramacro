@@ -470,10 +470,11 @@
         }
         if (t.assignee) meta += '<span class="task-ava" style="background:' + U.colorForName(t.assignee) + '" title="' + U.escape(t.assignee) + '">' + U.escape(U.initials(t.assignee)) + "</span>";
         var metaHTML = meta ? '<div class="task-meta">' + meta + "</div>" : "";
-        return '<div class="task-row' + (t.done ? " is-done" : "") + '"' + (draggable ? ' draggable="true"' : "") + ' data-tid="' + t.id + '">' +
+        var justDone = (t.id === U.viewState._justDone) ? " just-done" : "";
+        return '<div class="task-row' + (t.done ? " is-done" : "") + justDone + '"' + (draggable ? ' draggable="true"' : "") + ' data-tid="' + t.id + '">' +
             '<button class="task-check" data-act="toggle-task" data-tid="' + t.id + '" aria-label="' + (t.done ? "Rouvrir la tâche" : "Marquer terminée") + '"><i class="fa-solid fa-check"></i></button>' +
-            '<div class="task-body" data-act="edit-task" data-tid="' + t.id + '">' + dot +
-                '<span class="task-title">' + U.escape(t.title) + "</span>" + metaHTML +
+            '<div class="task-body" data-act="edit-task" data-tid="' + t.id + '">' +
+                '<span class="task-head">' + dot + '<span class="task-title">' + U.escape(t.title) + "</span></span>" + metaHTML +
             "</div>" +
             '<div class="task-actions">' +
                 '<button class="task-act" data-act="edit-task" data-tid="' + t.id + '" title="Modifier"><i class="fa-solid fa-pen"></i></button>' +
@@ -853,6 +854,7 @@
         else if (v === "reports") views.renderReports();
         else if (v === "conversations") views.renderConversations();
         views.updateBadges();
+        U.viewState._justDone = null; // l'animation de complétion n'est jouée qu'au rendu suivant la validation
     };
 
     /* --------- Délégation d'événements --------- */
@@ -873,7 +875,7 @@
         else if (a.act === "unarchive-objective") U.store.setObjectiveArchived(a.oid, false);
         else if (a.act === "toggle-archived-obj") { U.viewState.showArchivedObjectives = !U.viewState.showArchivedObjectives; renderObjectives(); }
         // --- Daily tasks ---
-        else if (a.act === "toggle-task") { var t = U.store.dailyTask(a.tid); if (t) U.store.setDailyTaskDone(a.tid, !t.done); }
+        else if (a.act === "toggle-task") { var t = U.store.dailyTask(a.tid); if (t) { if (!t.done) U.viewState._justDone = a.tid; U.store.setDailyTaskDone(a.tid, !t.done); } }
         else if (a.act === "edit-task") U.ui.openDailyTask(a.tid);
         else if (a.act === "del-task") { e.stopPropagation(); U.ui.deleteDailyTaskFlow(a.tid); }
         else if (a.act === "toggle-section") { var sid = a.sid; U.viewState.collapsedSections[sid] = !U.viewState.collapsedSections[sid]; views.renderDaily(); }
@@ -1017,6 +1019,7 @@
 
         // Daily tasks : saisie rapide (Entrée), renommage de section (Entrée / Échap / blur), glisser-déposer.
         var board = $("dailyBoard");
+        var gb = $("dailyGroupBy"); if (gb) gb.value = U.viewState.dailyGroup; // reflète le mode par défaut (assigné)
         bindDailyDnD(board);
         board.addEventListener("keydown", function (e) {
             var el = e.target;

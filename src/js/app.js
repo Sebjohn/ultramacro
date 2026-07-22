@@ -14,8 +14,9 @@
         calFilter: "all",
         // Daily tasks
         dailyHideDone: false,
-        dailyGroup: "manual",
+        dailyGroup: "assignee",
         quickAdd: {},
+        _justDone: null,
         collapsedSections: {},
         editingSection: null,
         _focusAddSid: undefined,
